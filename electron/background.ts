@@ -50,6 +50,9 @@ function createWindow() {
   //     mode: 'bottom'
   //   })
 
+  //hide menu bar
+  mainWindow.setMenuBarVisibility(false)
+
   return mainWindow
 }
 

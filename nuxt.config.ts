@@ -13,7 +13,12 @@ export default defineNuxtConfig({
     '@/../assets/styles/global.scss',
     'animate.css/animate.min.css'
   ],
-  modules: ['@nuxtjs/tailwindcss'],
+  colorMode: {
+    preference: 'system',
+    fallback: 'light', 
+    classSuffix: '-mode'
+  },
+  modules: ['@nuxtjs/tailwindcss', '@nuxtjs/color-mode'],
   tailwindcss: {
     cssPath: '~/assets/styles/tailwind.css',
     configPath: 'tailwind.config.js',

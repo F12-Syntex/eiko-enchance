@@ -1,25 +1,34 @@
 <template>
-  <div class="layout">
-    <Header />
+  <div :class="['eiko-layout', isDarkMode ? 'dark-mode' : 'light-mode']">
+    <SideBar />
     <main>
       <slot />
     </main>
-    <Footer />
   </div>
 </template>
 
 <script setup>
-import Header from '~/components/Header.vue';
-import Footer from '~/components/Footer.vue';
+import { useTheme } from '@/composables/useTheme';
+
+const { isDarkMode } = useTheme();
 </script>
 
 <style scoped>
-.layout {
+.eiko-layout {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   min-height: 100vh;
   overflow: hidden;
-  background: linear-gradient(0deg, rgba(9,0,29,1) 0%, rgba(10,0,46,1) 100%);
+}
+
+.dark-mode {
+  background: #0d0d0d;
+  color: #fff;
+}
+
+.light-mode {
+  background: #f5f5f5;
+  color: #000;
 }
 
 main {
@@ -27,7 +36,6 @@ main {
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #fff;
   padding: 20px;
   box-sizing: border-box;
 }
