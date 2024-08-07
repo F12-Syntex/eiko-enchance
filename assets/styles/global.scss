@@ -1,5 +1,6 @@
 body {
   transition: background-color 0.3s ease, color 0.3s ease;
+  overflow: hidden;
 }
 
 body.dark-mode {
@@ -38,4 +39,24 @@ body.light-mode {
 
 .selected .nav-link {
   color: #007bff;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2c2c2c; /* Dark track */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #555; /* Darker thumb */
+  border-radius: 10px;
+  border: 3px solid #2c2c2c; /* Matches track */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #007bff; /* Highlight on hover */
 }
