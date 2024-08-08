@@ -4,6 +4,9 @@ import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import { parentPort, threadId } from 'node:worker_threads';
 import { defineEventHandler, handleCacheHeaders, splitCookiesString, isEvent, createEvent, fetchWithEvent, getRequestHeader, eventHandler, setHeaders, sendRedirect, proxyRequest, createError, setResponseHeader, send, getResponseStatus, setResponseStatus, setResponseHeaders, getRequestHeaders, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, getQuery as getQuery$1, readBody, getResponseStatusText } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/h3/dist/index.mjs';
+import { promises } from 'fs';
+import { Readable } from 'stream';
+import path from 'path';
 import { getRequestDependencies, getPreloadLinks, getPrefetchLinks, createRenderer } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/vue-bundle-renderer/dist/runtime.mjs';
 import { stringify, uneval } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/devalue/index.js';
 import destr from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/destr/dist/index.mjs';
@@ -835,9 +838,11 @@ const errorHandler = (async function errorhandler(error, event) {
   return send(event, html);
 });
 
+const _lazy_5qw238 = () => Promise.resolve().then(function () { return aiModels$1; });
 const _lazy_PZeu2L = () => Promise.resolve().then(function () { return renderer$1; });
 
 const handlers = [
+  { route: '/api/ai-models', handler: _lazy_5qw238, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_error', handler: _lazy_PZeu2L, lazy: true, middleware: false, method: undefined },
   { route: '/**', handler: _lazy_PZeu2L, lazy: true, middleware: false, method: undefined }
 ];
@@ -1032,6 +1037,65 @@ const template$1 = (messages) => {
 const errorDev = /*#__PURE__*/Object.freeze({
   __proto__: null,
   template: template$1
+});
+
+const aiModels = defineEventHandler(async (event) => {
+  const modelsPath = path.join(process.env.HOME || process.env.USERPROFILE || "", "Documents", "eiko", "models");
+  try {
+    await promises.access(modelsPath);
+  } catch {
+    await promises.mkdir(modelsPath, { recursive: true });
+  }
+  const { method } = event.req;
+  if (method === "GET") {
+    return getInstalledModels(modelsPath);
+  } else if (method === "POST") {
+    return installModel(event, modelsPath);
+  } else {
+    return { error: "Unsupported method" };
+  }
+});
+async function getInstalledModels(modelsPath) {
+  try {
+    const modelFolders = await promises.readdir(modelsPath, { withFileTypes: true });
+    const installedModels = modelFolders.filter((dirent) => dirent.isDirectory()).map((dirent) => dirent.name);
+    return { models: installedModels };
+  } catch (error) {
+    return { error: "Could not retrieve models." };
+  }
+}
+async function* generateProgressUpdates(name) {
+  const totalSteps = 10;
+  for (let i = 1; i <= totalSteps; i++) {
+    yield JSON.stringify({
+      status: "downloading",
+      progress: i / totalSteps * 100,
+      message: `Downloading ${name}: ${i * 10}% complete`
+    });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  yield JSON.stringify({
+    status: "complete",
+    progress: 100,
+    message: `Model ${name} installed successfully.`
+  });
+}
+async function installModel(event, modelsPath) {
+  try {
+    const body = await readBody(event);
+    const { name } = body;
+    const stream = Readable.from(generateProgressUpdates(name));
+    const modelDir = path.join(modelsPath, name);
+    await promises.mkdir(modelDir, { recursive: true });
+    return stream;
+  } catch (error) {
+    return { error: "Could not install model." };
+  }
+}
+
+const aiModels$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: aiModels
 });
 
 const Vue3 = version.startsWith("3");

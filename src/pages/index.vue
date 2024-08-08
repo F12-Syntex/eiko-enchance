@@ -10,21 +10,40 @@
     </div>
 
     <div class="options-section">
-      <div>
-        <label for="scale-ratio">Scale Ratio: {{ scaleRatio }}x</label>
-        <input type="range" id="scale-ratio" min="1" max="4" step="0.1" v-model="scaleRatio" />
-        <progress :value="scaleRatio" max="4"></progress>
+      <div class="scale-section">
+        <div class="slider-container">
+          <input
+            type="range"
+            id="scale-ratio"
+            min="1"
+            max="4"
+            step="1"
+            v-model="scaleRatio"
+            :style="`background: linear-gradient(to right, #6c63ff ${(scaleRatio - 1) * 33.3333}%, #bbb ${(scaleRatio - 1) * 33.3333}%);`"
+          />
+          <div class="slider-label">
+            <span>1x</span>
+            <span>2x</span>
+            <span>3x</span>
+            <span>4x</span>
+          </div>
+        </div>
+        <div class="scale-display">Scale Ratio: {{ scaleRatio }}x</div>
       </div>
 
-      <div>
-        <label for="ai-tool">AI Tool:</label>
-        <select id="ai-tool" v-model="selectedAiTool">
-          <option value="">Select an AI tool</option>
-          <option value="tool1">AI Tool 1</option>
-          <option value="tool2">AI Tool 2</option>
-          <option value="tool3">AI Tool 3</option>
-        </select>
+      <div class="ai-tool-section">
+        <div class="custom-select">
+          <select id="ai-tool" v-model="selectedAiTool">
+            <option value="">Select an AI tool</option>
+            <option value="tool1">AI Tool 1</option>
+            <option value="tool2">AI Tool 2</option>
+            <option value="tool3">AI Tool 3</option>
+          </select>
+          <span class="arrow">&#9662;</span>
+        </div>
       </div>
+
+      <button class="process-button">Process</button>
     </div>
   </div>
 </template>
@@ -73,22 +92,23 @@ function handleFileDrop(event) {
   align-items: center;
   justify-content: center;
   width: 100%;
-  max-width: 800px;
+  max-width: 900px;
+  height: 400px;
   padding: 40px;
   margin-bottom: 20px;
-  border: 2px dashed #555;
-  background-color: #2c2c2c;
+  border: 2px dashed #6c63ff;
+  background-color: transparent;
   border-radius: 15px;
   transition: background-color 0.3s ease;
   cursor: pointer;
 }
 
 .upload-section:hover {
-  background-color: #3a3a3a;
+  background-color: rgba(108, 99, 255, 0.1);
 }
 
 .upload-section p {
-  font-size: 18px;
+  font-size: 20px;
   color: #bbb;
 }
 
@@ -99,10 +119,13 @@ function handleFileDrop(event) {
 .preview {
   margin-top: 20px;
   max-width: 100%;
-  max-height: 400px;
+  max-height: 350px;
   overflow: hidden;
   display: flex;
   justify-content: center;
+  border-radius: 15px;
+  background-color: #1c1c1e;
+  padding: 10px;
 }
 
 .preview img,
@@ -114,61 +137,117 @@ function handleFileDrop(event) {
 }
 
 .options-section {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 20px;
+  background-color: #1c1c1e;
+  box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.5);
   display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
-  width: 100%;
-  max-width: 800px;
-  padding: 20px;
-  background-color: #333;
-  border-radius: 15px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  gap: 20px;
 }
 
-.options-section > div {
-  margin: 20px;
-  width: 100%;
+.scale-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-label {
-  display: block;
-  margin-bottom: 10px;
-  font-weight: bold;
+.slider-container {
+  position: relative;
+  width: 300px;
 }
 
 input[type="range"] {
   width: 100%;
-}
-
-progress {
-  width: 100%;
-  height: 20px;
-  margin-top: 10px;
-  border-radius: 10px;
-  overflow: hidden;
+  margin-top: 20px;
   appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  outline: none;
 }
 
-progress::-webkit-progress-bar {
-  background-color: #444;
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  background-color: #f0f0f0;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-progress::-webkit-progress-value {
-  background-color: #76c7c0;
+.slider-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #bbb;
+  margin-top: 5px;
+}
+
+.scale-display {
+  margin-top: 10px;
+  font-size: 16px;
+  color: #f0f0f0;
+  text-align: center;
+}
+
+.ai-tool-section {
+  display: flex;
+  align-items: center;
+}
+
+.custom-select {
+  position: relative;
+  display: inline-block;
+  width: 200px;
 }
 
 select {
-  padding: 10px;
+  padding: 12px;
   width: 100%;
-  background-color: #444;
+  background-color: rgba(0, 0, 0, 0.5);
   color: #f0f0f0;
-  border: 1px solid #555;
+  border: none;
   border-radius: 10px;
-  transition: border-color 0.3s ease;
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  font-size: 16px;
+  backdrop-filter: brightness(1.2);
 }
 
-select:focus {
-  border-color: #76c7c0;
+select option {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.arrow {
+  position: absolute;
+  top: 50%;
+  right: 15px;
+  pointer-events: none;
+  transform: translateY(-50%);
+  color: #f0f0f0;
+}
+
+.process-button {
+  padding: 12px 24px;
+  background-color: #6c63ff;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-size: 16px;
+}
+
+.process-button:hover {
+  background-color: #ffffff;
+  color: #6c63ff;
 }
 </style>
