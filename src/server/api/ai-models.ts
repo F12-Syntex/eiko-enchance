@@ -1,6 +1,11 @@
 import { promises as fs } from 'fs'
 import path from 'path'
 import { Model } from '../../types/model'
+import { installModule } from 'nuxt/kit'
+import axios from 'axios'
+import { createWriteStream } from 'fs'
+import { pipeline } from 'stream/promises'
+import extractZip from 'extract-zip'
 
 const modelsCache: Model[] = [
   new Model(
@@ -31,7 +36,11 @@ export default defineEventHandler(async (event) => {
 
   const methodMap: { [key: string]: Function } = {
     getInstalledModels: () => getInstalledModels(modelsPath),
-    getAllModels: getAllModels
+    getAllModels: getAllModels,
+    installModel: async () => {
+      const body = await readBody(event)
+      return installModel(body.model, modelsPath)
+    }
   }
 
   if (methodName && methodName in methodMap) {
@@ -87,4 +96,35 @@ async function getInstalledModels(modelsPath: string) {
 
 async function getAllModels() {
   return { models: modelsCache }
+}
+
+export async function installModel(model: Model, modelsPath: string) {
+  const downloadUrl = model.downloadUrl
+  const downloadSize = model.fileSize
+
+  try {
+    const response = await axios.get(downloadUrl, {
+      responseType: 'stream',
+      onDownloadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / downloadSize)
+        console.log(`Download progress: ${percentCompleted}%`)
+      },
+    })
+
+    const zipFilePath = path.join(modelsPath, `${model.name}.zip`)
+    const writer = createWriteStream(zipFilePath)
+
+    await pipeline(response.data, writer)
+
+    const extractPath = path.join(modelsPath, model.name)
+    await extractZip(zipFilePath, { dir: extractPath })
+
+    await fs.unlink(zipFilePath)
+
+    console.log(`Model ${model.name} installed successfully.`)
+    return { message: `Model ${model.name} installed successfully.` }
+  } catch (error) {
+    console.error(`Error installing model ${model.name}:`, error)
+    return { error: `Error installing model ${model.name}. Please try again.` }
+  }
 }

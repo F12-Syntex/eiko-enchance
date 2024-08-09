@@ -4,8 +4,11 @@ import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import { parentPort, threadId } from 'node:worker_threads';
 import { defineEventHandler, handleCacheHeaders, splitCookiesString, isEvent, createEvent, fetchWithEvent, getRequestHeader, eventHandler, setHeaders, sendRedirect, proxyRequest, createError, setResponseHeader, send, getResponseStatus, setResponseStatus, setResponseHeaders, getRequestHeaders, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, getQuery as getQuery$1, readBody, getResponseStatusText } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/h3/dist/index.mjs';
-import { promises } from 'fs';
+import { promises, createWriteStream } from 'fs';
 import path from 'path';
+import axios from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/axios/index.js';
+import { pipeline } from 'stream/promises';
+import extractZip from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/extract-zip/index.js';
 import { getRequestDependencies, getPreloadLinks, getPrefetchLinks, createRenderer } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/vue-bundle-renderer/dist/runtime.mjs';
 import { stringify, uneval } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/devalue/index.js';
 import destr from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/destr/dist/index.mjs';
@@ -1133,7 +1136,11 @@ const aiModels = defineEventHandler(async (event) => {
   const methodName = event.node.req.headers["x-method-name"];
   const methodMap = {
     getInstalledModels: () => getInstalledModels(modelsPath),
-    getAllModels
+    getAllModels,
+    installModel: async () => {
+      const body = await readBody(event);
+      return installModel(body.model, modelsPath);
+    }
   };
   if (methodName && methodName in methodMap) {
     return await methodMap[methodName]();
@@ -1175,10 +1182,35 @@ async function getInstalledModels(modelsPath) {
 async function getAllModels() {
   return { models: modelsCache };
 }
+async function installModel(model, modelsPath) {
+  const downloadUrl = model.downloadUrl;
+  const downloadSize = model.fileSize;
+  try {
+    const response = await axios.get(downloadUrl, {
+      responseType: "stream",
+      onDownloadProgress: (progressEvent) => {
+        const percentCompleted = Math.round(progressEvent.loaded * 100 / downloadSize);
+        console.log(`Download progress: ${percentCompleted}%`);
+      }
+    });
+    const zipFilePath = path.join(modelsPath, `${model.name}.zip`);
+    const writer = createWriteStream(zipFilePath);
+    await pipeline(response.data, writer);
+    const extractPath = path.join(modelsPath, model.name);
+    await extractZip(zipFilePath, { dir: extractPath });
+    await promises.unlink(zipFilePath);
+    console.log(`Model ${model.name} installed successfully.`);
+    return { message: `Model ${model.name} installed successfully.` };
+  } catch (error) {
+    console.error(`Error installing model ${model.name}:`, error);
+    return { error: `Error installing model ${model.name}. Please try again.` };
+  }
+}
 
 const aiModels$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: aiModels
+  default: aiModels,
+  installModel: installModel
 });
 
 const Vue3 = version.startsWith("3");

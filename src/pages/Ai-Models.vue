@@ -54,6 +54,12 @@ onMounted(async () => {
   }
 });
 
+
+const installModel = async (model) => {
+  console.log('Installing model:', model);
+  await aiModels.installModel(model);
+};
+
 library.add(faDownload, faTrash, faCheckCircle, faTimesCircle);
 </script>
 
