@@ -5,16 +5,10 @@
       <hr class="gradient-line" />
     </div>
     <div class="ai-model-cards">
-      <div
-        v-for="(model, index) in models"
-        :key="index"
-        class="ai-model-card"
-      >
+      <div v-for="(model, index) in models" :key="index" class="ai-model-card">
         <div class="ai-model-card-header">
-          <font-awesome-icon
-            :icon="model.isInstalled ? ['fas', 'check-circle'] : ['fas', 'times-circle']"
-            :class="model.isInstalled ? 'status-icon-green' : 'status-icon-red'"
-          />
+          <font-awesome-icon :icon="model.isInstalled ? ['fas', 'check-circle'] : ['fas', 'times-circle']"
+            :class="model.isInstalled ? 'status-icon-green' : 'status-icon-red'" />
           <h2>{{ model.name }}</h2>
         </div>
         <div class="ai-model-card-description">
@@ -26,18 +20,12 @@
         <div class="ai-model-card-footer">
           <hr class="gradient-line" />
           <div class="ai-model-card-footer-panel">
-            <button
-              class="ai-model-card-footer-button"
-              @click="installModel(model)"
-              :disabled="model.isInstalled || model.isInstalling"
-            >
+            <button class="ai-model-card-footer-button" @click="installModel(model)"
+              :disabled="model.isInstalled || model.isInstalling">
               <font-awesome-icon :icon="['fas', 'download']" />
             </button>
-            <button
-              class="ai-model-card-footer-button"
-              @click="deleteModel(model)"
-              :disabled="!model.isInstalled || model.isInstalling"
-            >
+            <button class="ai-model-card-footer-button" @click="deleteModel(model)"
+              :disabled="!model.isInstalled || model.isInstalling">
               <font-awesome-icon :icon="['fas', 'trash']" />
             </button>
           </div>
@@ -52,102 +40,15 @@ import { onMounted, ref } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { faDownload, faTrash, faCheckCircle, faTimesCircle } from '@fortawesome/free-solid-svg-icons';
+import aiModels from '../controller/ai-models';
 
-const models = ref([
-  {
-    name: 'RealESRGAN_x4plus',
-    description: 'High-quality image super-resolution model for general images.',
-    isInstalled: false,
-    isInstalling: false,
-    progress: 0,
-  },
-  {
-    name: 'RealESRGAN_x4plus_anime_6B',
-    description: 'Optimized for anime images with a smaller model size.',
-    isInstalled: false,
-    isInstalling: false,
-    progress: 0,
-  },
-  {
-    name: 'RealESRGAN_x2plus',
-    description: '2x upscaling model for general images.',
-    isInstalled: false,
-    isInstalling: false,
-    progress: 0,
-  },
-  {
-    name: 'RealESRGAN_anime_video',
-    description: 'Model specifically designed for improving anime video quality.',
-    isInstalled: false,
-    isInstalling: false,
-    progress: 0,
-  },
-]);
+let models = await aiModels.getInstalledModels();
+models = models.models.filter((model) => !model.usable);
 
-const installModel = async (model) => {
-  try {
-    model.isInstalling = true;
-    model.progress = 0;
-    const response = await fetch('/api/ai-models', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ name: model.name, method: 'install' }),
-    });
-    if (!response.ok) throw new Error('Network response was not ok');
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value);
-      const updates = chunk.split('\n').filter(Boolean).map(JSON.parse);
-      for (const update of updates) {
-        model.progress = update.progress;
-        if (update.status === 'complete') {
-          model.isInstalled = true;
-          model.isInstalling = false;
-        }
-      }
-    }
-    console.log('Model installed:', model.name);
-  } catch (error) {
-    console.error('Error installing model:', error);
-    model.isInstalling = false;
-  }
-};
-
-const deleteModel = async (model) => {
-  try {
-    const response = await fetch('/api/ai-models', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ name: model.name, method: 'delete' }),
-    });
-    if (!response.ok) throw new Error('Network response was not ok');
-    const data = await response.json();
-    console.log('Model deleted:', data);
-    model.isInstalled = false;
-  } catch (error) {
-    console.error('Error deleting model:', error);
-  }
-};
 
 onMounted(async () => {
   try {
-    const response = await fetch('/api/ai-models');
-    if (!response.ok) throw new Error('Network response was not ok');
-    const data = await response.json();
-    console.log('Installed Models:', data.models);
-    data.models.forEach(modelName => {
-      const model = models.value.find(m => m.name === modelName);
-      if (model) {
-        model.isInstalled = true;
-      }
-    });
+    console.log('hi');
   } catch (error) {
     console.error('Error fetching models:', error);
   }
@@ -220,13 +121,15 @@ library.add(faDownload, faTrash, faCheckCircle, faTimesCircle);
 
 .status-icon-green {
   font-size: 1.5em;
-  color: #4caf50; /* Green color */
+  color: #4caf50;
+  /* Green color */
   transition: transform 0.3s ease-in-out;
 }
 
 .status-icon-red {
   font-size: 1.5em;
-  color: #f50057; /* Red color */
+  color: #f50057;
+  /* Red color */
   transition: transform 0.3s ease-in-out;
 }
 

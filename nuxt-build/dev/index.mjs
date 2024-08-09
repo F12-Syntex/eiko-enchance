@@ -5,7 +5,6 @@ import { mkdirSync } from 'node:fs';
 import { parentPort, threadId } from 'node:worker_threads';
 import { defineEventHandler, handleCacheHeaders, splitCookiesString, isEvent, createEvent, fetchWithEvent, getRequestHeader, eventHandler, setHeaders, sendRedirect, proxyRequest, createError, setResponseHeader, send, getResponseStatus, setResponseStatus, setResponseHeaders, getRequestHeaders, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, getQuery as getQuery$1, readBody, getResponseStatusText } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/h3/dist/index.mjs';
 import { promises } from 'fs';
-import { Readable } from 'stream';
 import path from 'path';
 import { getRequestDependencies, getPreloadLinks, getPrefetchLinks, createRenderer } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/vue-bundle-renderer/dist/runtime.mjs';
 import { stringify, uneval } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/devalue/index.js';
@@ -1039,6 +1038,91 @@ const errorDev = /*#__PURE__*/Object.freeze({
   template: template$1
 });
 
+var __defProp = Object.defineProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField = (obj, key, value) => {
+  __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+  return value;
+};
+class Model {
+  constructor(name, description, downloadUrl, fileSize, installed = false, installable = false, usable) {
+    __publicField(this, "name");
+    __publicField(this, "description");
+    __publicField(this, "downloadUrl");
+    __publicField(this, "fileSize");
+    __publicField(this, "installed");
+    __publicField(this, "installable", false);
+    __publicField(this, "usable");
+    this.name = name;
+    this.description = description;
+    this.downloadUrl = downloadUrl;
+    this.fileSize = fileSize;
+    this.installed = installed;
+    this.installable = installable;
+    this.usable = usable;
+  }
+  getDownloadUrl() {
+    return this.downloadUrl;
+  }
+  getDownloadSize() {
+    return `${this.fileSize} MB`;
+  }
+  getDownloadLink() {
+    return this.downloadUrl;
+  }
+  getDownloadInfo() {
+    return `${this.getDownloadSize()} - ${this.getDownloadLink()}`;
+  }
+  getDetails() {
+    return `${this.name} - ${this.description}`;
+  }
+  getSummary() {
+    return `${this.getDetails()} - ${this.getDownloadInfo()}`;
+  }
+  isInstalled() {
+    return this.installed;
+  }
+  isInstallable() {
+    return this.installable;
+  }
+  setInstalled(installed) {
+    this.installed = installed;
+  }
+  setInstallable(installable) {
+    this.installable = installable;
+  }
+  isUsable() {
+    return this.usable;
+  }
+  setUsable(usable) {
+    this.usable = usable;
+  }
+  toString() {
+    return this.getSummary();
+  }
+  static fromJson(json) {
+    return new Model(json.name, json.description, json.downloadUrl, json.fileSize, json.installed, json.installable, json.usable);
+  }
+  static fromJsonArray(json) {
+    return json.map((model) => Model.fromJson(model));
+  }
+}
+
+const modelsCache = [
+  new Model(
+    "realesrgan-ncnn",
+    "A portable version of RealESRGAN for image upscaling. Contains 4 models: realesrgan-x4plus-anime, realesrgan-x4plus, realesrgan-x2plus, realesrgan-anime-video.",
+    "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-windows.zip",
+    45471545,
+    false,
+    true,
+    false
+  ),
+  new Model("realesrgan-x4plus-anime", "A RealESRGAN model trained on anime images for 4x upscaling.", "", 0, false, false, true),
+  new Model("realesrgan-x4plus", "A RealESRGAN model trained on mixed images for 4x upscaling.", "", 0, false, false, true),
+  new Model("realesrgan-x2plus", "A RealESRGAN model trained on mixed images for 2x upscaling.", "", 0, false, false, true),
+  new Model("realesrgan-anime-video", "A RealESRGAN model trained on anime images for video upscaling.", "", 0, false, false, true)
+];
 const aiModels = defineEventHandler(async (event) => {
   const modelsPath = path.join(process.env.HOME || process.env.USERPROFILE || "", "Documents", "eiko", "models");
   try {
@@ -1046,11 +1130,13 @@ const aiModels = defineEventHandler(async (event) => {
   } catch {
     await promises.mkdir(modelsPath, { recursive: true });
   }
-  const { method } = event.req;
-  if (method === "GET") {
-    return getInstalledModels(modelsPath);
-  } else if (method === "POST") {
-    return installModel(event, modelsPath);
+  const methodName = event.node.req.headers["x-method-name"];
+  const methodMap = {
+    getInstalledModels: () => getInstalledModels(modelsPath),
+    getAllModels
+  };
+  if (methodName && methodName in methodMap) {
+    return await methodMap[methodName]();
   } else {
     return { error: "Unsupported method" };
   }
@@ -1058,39 +1144,36 @@ const aiModels = defineEventHandler(async (event) => {
 async function getInstalledModels(modelsPath) {
   try {
     const modelFolders = await promises.readdir(modelsPath, { withFileTypes: true });
-    const installedModels = modelFolders.filter((dirent) => dirent.isDirectory()).map((dirent) => dirent.name);
-    return { models: installedModels };
+    let installedModels = [];
+    for (const dirent of modelFolders) {
+      if (dirent.isDirectory()) {
+        const file = dirent.name;
+        if (file === "realesrgan-ncnn") {
+          const realEsrganFolder = path.join(modelsPath, file);
+          const realEsrganModels = await promises.readdir(realEsrganFolder, { withFileTypes: true });
+          for (const realEsrganDirent of realEsrganModels) {
+            if (realEsrganDirent.isFile() && realEsrganDirent.name.endsWith(".bin")) {
+              installedModels.push(realEsrganDirent.name);
+            }
+          }
+        }
+        installedModels.push(dirent.name);
+      }
+    }
+    let models = [];
+    for (const model of modelsCache) {
+      if (installedModels.includes(model.name)) {
+        model.setInstalled(true);
+      }
+      models.push(model);
+    }
+    return { models };
   } catch (error) {
     return { error: "Could not retrieve models." };
   }
 }
-async function* generateProgressUpdates(name) {
-  const totalSteps = 10;
-  for (let i = 1; i <= totalSteps; i++) {
-    yield JSON.stringify({
-      status: "downloading",
-      progress: i / totalSteps * 100,
-      message: `Downloading ${name}: ${i * 10}% complete`
-    });
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  yield JSON.stringify({
-    status: "complete",
-    progress: 100,
-    message: `Model ${name} installed successfully.`
-  });
-}
-async function installModel(event, modelsPath) {
-  try {
-    const body = await readBody(event);
-    const { name } = body;
-    const stream = Readable.from(generateProgressUpdates(name));
-    const modelDir = path.join(modelsPath, name);
-    await promises.mkdir(modelDir, { recursive: true });
-    return stream;
-  } catch (error) {
-    return { error: "Could not install model." };
-  }
+async function getAllModels() {
+  return { models: modelsCache };
 }
 
 const aiModels$1 = /*#__PURE__*/Object.freeze({
