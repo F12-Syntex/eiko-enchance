@@ -840,10 +840,12 @@ const errorHandler = (async function errorhandler(error, event) {
   return send(event, html);
 });
 
+const _lazy_u6YdUU = () => Promise.resolve().then(function () { return actions; });
 const _lazy_5qw238 = () => Promise.resolve().then(function () { return aiModels$1; });
 const _lazy_PZeu2L = () => Promise.resolve().then(function () { return renderer$1; });
 
 const handlers = [
+  { route: '/api/actions', handler: _lazy_u6YdUU, lazy: true, middleware: false, method: undefined },
   { route: '/api/ai-models', handler: _lazy_5qw238, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_error', handler: _lazy_PZeu2L, lazy: true, middleware: false, method: undefined },
   { route: '/**', handler: _lazy_PZeu2L, lazy: true, middleware: false, method: undefined }
@@ -1039,6 +1041,10 @@ const template$1 = (messages) => {
 const errorDev = /*#__PURE__*/Object.freeze({
   __proto__: null,
   template: template$1
+});
+
+const actions = /*#__PURE__*/Object.freeze({
+  __proto__: null
 });
 
 var __defProp = Object.defineProperty;

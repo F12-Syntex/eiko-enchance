@@ -62,7 +62,7 @@ let canProcess = computed(() => selectedAiTool.value != '' && previewUrl.value !
 
 async function loadModels() {
   let { models } = await aiModels.getInstalledModels();
-  availableModels.value = models.filter((model) => model.usable);
+  availableModels.value = models.filter((model) => model.usable && model.installed);
   console.log('Available Models:', availableModels.value);
 }
 
@@ -89,11 +89,12 @@ function handleFileDrop(event) {
 }
 
 function processImage() {
-  //get the selecter and check the selected value
-  // const model = selectedAiTool.value;
-  //get the selector from the id ai-model then get the value
+  // Get the selected AI model from the 'ai-model' select element
   const model = document.getElementById('ai-model').value;
   console.log('Processing image with:', { scaleRatio: scaleRatio.value, aiModel: model });
+
+  // Open a file dialog for choosing the download path of the upscaled image
+
 }
 </script>
 
@@ -104,11 +105,14 @@ function processImage() {
 .app-container {
   font-family: 'Poppins', sans-serif;
   color: #e0e0e0;
-  min-height: 100vh;
+  min-height: 100%;
   width: 100%;
   display: flex;
   flex-direction: column;
   padding: 2rem;
+
+  overflow-y: scroll;
+  overflow-x: hidden;
 
 
 }
