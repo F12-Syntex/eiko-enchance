@@ -15,6 +15,46 @@ export default function useElectron() {
     close: () => electron.ipcRenderer.invoke('close:app', null)
   }
 
+  const fileExplorer = {
+    openFileDialog: async (options = {}) => {
+      const defaultOptions = {
+        properties: ['openFile'],
+        filters: [
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      }
+      const dialogOptions = { ...defaultOptions, ...options }
+      
+      try {
+        if (!electron.ipcRenderer.invoke) {
+          throw new Error('ipcRenderer.invoke is not available. Make sure you are using a recent version of Electron.');
+        }
+        const result = await electron.ipcRenderer.invoke('dialog:openFile', dialogOptions)
+        return result
+      } catch (error) {
+        console.error('Error opening file dialog:', error)
+        throw error; // Re-throw the error so the caller can handle it
+      }
+    },
+    openFileDialogFolder: async (options = {}) => {
+      const defaultOptions = {
+        properties: ['openDirectory']
+      }
+      const dialogOptions = { ...defaultOptions, ...options }
+      
+      try {
+        if (!electron.ipcRenderer.invoke) {
+          throw new Error('ipcRenderer.invoke is not available. Make sure you are using a recent version of Electron.');
+        }
+        const result = await electron.ipcRenderer.invoke('dialog:openFolder', dialogOptions)
+        return result
+      } catch (error) {
+        console.error('Error opening folder dialog:', error)
+        throw error; // Re-throw the error so the caller can handle it
+      }
+    }
+  };
+
   // Window title bar stats
   // ======================
   const windowStats = ref({
@@ -28,7 +68,8 @@ export default function useElectron() {
   electron.ipcRenderer.on('window:fullscreenChanged', (_event, value) => {
     windowStats.value.isFullscreen = value
   })
+  
 
   // Initialize ipcRenderer
-  return { isElectron, titleBarActions, windowStats }
+  return { isElectron, titleBarActions, windowStats, fileExplorer }
 }

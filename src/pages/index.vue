@@ -46,12 +46,14 @@
 <script setup>
 import { ref, computed } from 'vue';
 import aiModels from '../controller/ai-models';
+import settings from '../managers/SettingsManager';
 
 const fileInput = ref(null);
 const previewUrl = ref('');
 const fileType = ref('');
 const scaleRatio = ref(1);
 const selectedAiTool = ref('');
+const filePath = ref('');
 
 const availableModels = ref([]);
 
@@ -74,6 +76,7 @@ function triggerFileInput() {
 
 function handleFileUpload(event) {
   const file = event.target.files[0];
+  filePath.value = file.path;
   if (file) {
     previewUrl.value = URL.createObjectURL(file);
     fileType.value = file.type.startsWith('image') ? 'image' : 'video';
@@ -82,20 +85,61 @@ function handleFileUpload(event) {
 
 function handleFileDrop(event) {
   const file = event.dataTransfer.files[0];
+  filePath.value = file.path;
   if (file) {
     previewUrl.value = URL.createObjectURL(file);
     fileType.value = file.type.startsWith('image') ? 'image' : 'video';
   }
 }
 
-function processImage() {
+async function processImage() {
   // Get the selected AI model from the 'ai-model' select element
   const model = document.getElementById('ai-model').value;
-  console.log('Processing image with:', { scaleRatio: scaleRatio.value, aiModel: model });
 
-  // Open a file dialog for choosing the download path of the upscaled image
+  //get the model information from the name
+
+  const modelInfo = await aiModels.getModelFromName(model);
+
+  const exportFilePath = settings.getSettings().upscalerDirectory;
+  const cacheDir = settings.getSettings().cacheDirectory;
+  const sourceFile = filePath.value;
+
+  const request = {
+    scaleRatio: scaleRatio.value,
+    aiModel: modelInfo,
+    filePath: exportFilePath.value,
+    exportFilePath: exportFilePath,
+    cacheDir: cacheDir,
+    sourceFile: sourceFile
+  };
+
+  console.log('Processing Image:', request);
+
+  // Process the image using the selected AI model
+  try {
+    const response = await fetch('/api/upscaler', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Method-Name': 'upscaleImage'
+      },
+      body: JSON.stringify(request)
+    });
+
+    const result = await response.json();
+
+    if (result.error) {
+      console.error('Upscaling failed:', result.error);
+    } else {
+      console.log('Upscaling completed:', result.message);
+    }
+  } catch (error) {
+    console.error('Error calling upscaler API:', error);
+  }
 
 }
+
+
 </script>
 
 <style scoped>
@@ -105,16 +149,13 @@ function processImage() {
 .app-container {
   font-family: 'Poppins', sans-serif;
   color: #e0e0e0;
-  min-height: 100%;
+  min-height: 100vh;
   width: 100%;
   display: flex;
   flex-direction: column;
   padding: 2rem;
-
-  overflow-y: scroll;
-  overflow-x: hidden;
-
-
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
 header {
@@ -133,13 +174,13 @@ main {
   flex-direction: column;
   align-items: center;
   gap: 2rem;
+  flex-grow: 1;
 }
 
 .upload-area {
   width: 100%;
   max-width: 80%;
-  height: 40%;
-  min-height: 400px;
+  height: 400px;
   border: 3px dashed #4a4a4a;
   border-radius: 20px;
   display: flex;
@@ -288,7 +329,26 @@ select {
   }
 
   .upload-area {
-    height: 200px;
+    height: 300px;
+  }
+}
+
+@media (max-height: 800px) {
+  .app-container {
+    padding: 1rem;
+  }
+
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .upload-area {
+    height: 250px;
+  }
+
+  .controls {
+    gap: 1rem;
   }
 }
 </style>

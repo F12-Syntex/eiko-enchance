@@ -6,8 +6,13 @@
     <div class="settings-grid">
       <div class="setting-item">
         <label for="upscaler-directory">Upscaler Output Directory:</label>
-        <input type="text" id="upscaler-directory" v-model="settings.upscalerDirectory" @input="saveSettings"
-          @click="changeDir">
+        <input type="text" id="upscaler-directory" v-model="settings.upscalerDirectory" 
+               @click="changeDir('upscaler')" readonly>
+      </div>
+      <div class="setting-item">
+        <label for="cache-directory">Cache Directory:</label>
+        <input type="text" id="cache-directory" v-model="settings.cacheDirectory" 
+               @click="changeDir('cache')" readonly>
       </div>
     </div>
 
@@ -16,60 +21,34 @@
 </template>
 
 <script>
-// import actionsController from './path/to/actionsController';
+import useElectron from '../../composables/useElectron';
+import settingsManager from '../managers/SettingsManager';
+
 export default {
   name: "Settings",
   data() {
     return {
-      settings: {
-        upscalerDirectory: "",
-        upscaleFactor: "2",
-        aiModel: "balanced",
-        fileFormat: "png",
-        autoSave: true,
-        theme: "dark"
-      }
+      settings: settingsManager.getSettings()
     };
-  },
-  mounted() {
-    this.loadSettings();
   },
   methods: {
     saveSettings() {
-      localStorage.setItem("aiUpscalerSettings", JSON.stringify(this.settings));
-    },
-    loadSettings() {
-      const savedSettings = localStorage.getItem("aiUpscalerSettings");
-      if (savedSettings) {
-        this.settings = JSON.parse(savedSettings);
-      }
+      settingsManager.saveSettings(this.settings);
     },
     resetSettings() {
-      this.settings = {
-        upscalerDirectory: "",
-        upscaleFactor: "2",
-        aiModel: "balanced",
-        fileFormat: "png",
-        autoSave: true,
-        theme: "dark"
-      };
-      this.saveSettings();
+      this.settings = settingsManager.resetSettings();
     },
-    async changeDir() {
-      // try {
-      //   const response = await actionsController.exploreFileView();
-      //   if (response.folderPath) {
-      //     console.log('Selected folder:', response.folderPath);
-      //     // Do something with the selected folder path
-      //   } else if (response.canceled) {
-      //     console.log('Folder selection was canceled');
-      //   } else if (response.error) {
-      //     console.error('Error:', response.error);
-      //   }
-      // } catch (error) {
-      //   console.error('Failed to open file explorer:', error);
-      // }
-      alert('Change directory');
+    async changeDir(type) {
+      const { fileExplorer } = useElectron()
+      const dialog = await fileExplorer.openFileDialogFolder();
+      if (dialog.filePaths && dialog.filePaths.length > 0) {
+        if (type === 'upscaler') {
+          this.settings.upscalerDirectory = dialog.filePaths[0];
+        } else if (type === 'cache') {
+          this.settings.cacheDirectory = dialog.filePaths[0];
+        }
+        this.saveSettings();
+      }
     }
   }
 };
@@ -93,14 +72,19 @@ p {
 }
 
 .settings-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-direction: column;
+  width: 100%;
   gap: 20px;
 }
 
 .setting-item {
   display: flex;
   flex-direction: column;
+
+  width: 80%;
 }
 
 label {
@@ -117,6 +101,7 @@ select {
   border: 1px solid #444;
   border-radius: 4px;
   color: #fff;
+  cursor: default; 
 }
 
 .switch {

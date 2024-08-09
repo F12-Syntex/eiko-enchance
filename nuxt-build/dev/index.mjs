@@ -842,11 +842,13 @@ const errorHandler = (async function errorhandler(error, event) {
 
 const _lazy_u6YdUU = () => Promise.resolve().then(function () { return actions; });
 const _lazy_5qw238 = () => Promise.resolve().then(function () { return aiModels$1; });
+const _lazy_Ffj7fu = () => Promise.resolve().then(function () { return upscaler$1; });
 const _lazy_PZeu2L = () => Promise.resolve().then(function () { return renderer$1; });
 
 const handlers = [
   { route: '/api/actions', handler: _lazy_u6YdUU, lazy: true, middleware: false, method: undefined },
   { route: '/api/ai-models', handler: _lazy_5qw238, lazy: true, middleware: false, method: undefined },
+  { route: '/api/upscaler', handler: _lazy_Ffj7fu, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_error', handler: _lazy_PZeu2L, lazy: true, middleware: false, method: undefined },
   { route: '/**', handler: _lazy_PZeu2L, lazy: true, middleware: false, method: undefined }
 ];
@@ -1266,6 +1268,26 @@ const aiModels$1 = /*#__PURE__*/Object.freeze({
   default: aiModels,
   deleteModel: deleteModel,
   installModel: installModel
+});
+
+const upscaler = defineEventHandler(async (event) => {
+  const methodName = event.node.req.headers["x-method-name"];
+  const methodMap = {
+    upscaleImage
+  };
+  if (methodName && methodName in methodMap) {
+    return await methodMap[methodName]();
+  } else {
+    return { error: "Unsupported method" };
+  }
+});
+async function upscaleImage() {
+  return { message: "C:/Users/username/Documents/eiko/models" };
+}
+
+const upscaler$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: upscaler
 });
 
 const Vue3 = version.startsWith("3");

@@ -98,10 +98,18 @@ export async function deleteModel(model: Model): Promise<void> {
   }
 }
 
+export async function getModelFromName(name: string): Promise<Model | undefined> {
+  const response = await getAllModels();
+  if (response.models) {
+    return response.models.find(model => model.name === name);
+  }
+}
+
 
 export default {
   getInstalledModels,
   getAllModels,
   installModel,
-  deleteModel
+  deleteModel,
+  getModelFromName
 };

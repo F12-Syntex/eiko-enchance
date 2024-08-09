@@ -4,6 +4,7 @@ import { app, BrowserWindow, session } from 'electron'
 import singleInstance from './singleInstance'
 import dynamicRenderer from './dynamicRenderer'
 import titleBarActionsModule from './modules/titleBarActions'
+import explorer from './modules/explorer'
 import updaterModule from './modules/updater'
 import macMenuModule from './modules/macMenu'
 
@@ -14,7 +15,7 @@ const isProduction = process.env.NODE_ENV !== 'development'
 const platform: 'darwin' | 'win32' | 'linux' = process.platform as any
 const architucture: '64' | '32' = os.arch() === 'x64' ? '64' : '32'
 const headerSize = 32
-const modules = [titleBarActionsModule, macMenuModule, updaterModule]
+const modules = [titleBarActionsModule, macMenuModule, updaterModule, explorer]
 
 // Initialize app window
 // =====================

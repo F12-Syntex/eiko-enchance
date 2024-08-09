@@ -9,6 +9,9 @@ declare module 'nitropack' {
     '/api/ai-models': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../src/server/api/ai-models').default>>>>
     }
+    '/api/upscaler': {
+      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../src/server/api/upscaler').default>>>>
+    }
     '/__nuxt_error': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../node_modules/nuxt/dist/core/runtime/nitro/renderer').default>>>>
     }
