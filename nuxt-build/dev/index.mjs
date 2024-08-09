@@ -1048,7 +1048,7 @@ var __publicField = (obj, key, value) => {
   return value;
 };
 class Model {
-  constructor(name, description, downloadUrl, fileSize, installed = false, installable = false, usable) {
+  constructor(name, description, downloadUrl, fileSize, installed = false, installable = false, usable, execusionScriptPath, location) {
     __publicField(this, "name");
     __publicField(this, "description");
     __publicField(this, "downloadUrl");
@@ -1056,6 +1056,8 @@ class Model {
     __publicField(this, "installed");
     __publicField(this, "installable", false);
     __publicField(this, "usable");
+    __publicField(this, "execusionScriptPath");
+    __publicField(this, "location");
     this.name = name;
     this.description = description;
     this.downloadUrl = downloadUrl;
@@ -1063,6 +1065,8 @@ class Model {
     this.installed = installed;
     this.installable = installable;
     this.usable = usable;
+    this.execusionScriptPath = execusionScriptPath;
+    this.location = location;
   }
   getDownloadUrl() {
     return this.downloadUrl;
@@ -1080,7 +1084,7 @@ class Model {
     return `${this.name} - ${this.description}`;
   }
   getSummary() {
-    return `${this.getDetails()} - ${this.getDownloadInfo()}`;
+    return `${this.name} - ${this.description}`;
   }
   isInstalled() {
     return this.installed;
@@ -1100,17 +1104,34 @@ class Model {
   setUsable(usable) {
     this.usable = usable;
   }
+  getExecutionScriptPath() {
+    return this.execusionScriptPath;
+  }
+  getLocation() {
+    return this.location;
+  }
+  setLocation(location) {
+    this.location = location;
+  }
   toString() {
     return this.getSummary();
   }
-  static fromJson(json) {
-    return new Model(json.name, json.description, json.downloadUrl, json.fileSize, json.installed, json.installable, json.usable);
-  }
-  static fromJsonArray(json) {
-    return json.map((model) => Model.fromJson(model));
+  toJSON() {
+    return {
+      name: this.name,
+      description: this.description,
+      downloadUrl: this.downloadUrl,
+      fileSize: this.fileSize,
+      installed: this.installed,
+      installable: this.installable,
+      usable: this.usable,
+      execusionScriptPath: this.execusionScriptPath,
+      location: this.location
+    };
   }
 }
 
+const REALESRGAN_SCRIPT = "realesrgan-ncnn/realesrgan-ncnn-vulkan.exe";
 const modelsCache = [
   new Model(
     "realesrgan-ncnn",
@@ -1119,12 +1140,16 @@ const modelsCache = [
     45471545,
     false,
     true,
-    false
+    false,
+    REALESRGAN_SCRIPT,
+    ""
   ),
-  new Model("realesrgan-x4plus-anime", "A RealESRGAN model trained on anime images for 4x upscaling.", "", 0, false, false, true),
-  new Model("realesrgan-x4plus", "A RealESRGAN model trained on mixed images for 4x upscaling.", "", 0, false, false, true),
-  new Model("realesrgan-x2plus", "A RealESRGAN model trained on mixed images for 2x upscaling.", "", 0, false, false, true),
-  new Model("realesrgan-anime-video", "A RealESRGAN model trained on anime images for video upscaling.", "", 0, false, false, true)
+  new Model("realesr-animevideov3-x2.bin", "A RealSR model trained on anime images for 2x upscaling.", "", 0, false, false, true, REALESRGAN_SCRIPT, "realesrgan-ncnn/models/realesr-animevideov3-x2.bin"),
+  new Model("realesr-animevideov3-x3.bin", "A RealSR model trained on anime images for 3x upscaling.", "", 0, false, false, true, REALESRGAN_SCRIPT, "realesrgan-ncnn/models/realesr-animevideov3-x3.bin"),
+  new Model("realesr-animevideov3-x4.bin", "A RealSR model trained on anime images for 4x upscaling.", "", 0, false, false, true, REALESRGAN_SCRIPT, "realesrgan-ncnn/models/realesr-animevideov3-x4.bin"),
+  new Model("realesrgan-x4plus-anime.bin", "A RealESRGAN model trained on anime images for 4x upscaling.", "", 0, false, false, true, REALESRGAN_SCRIPT, "realesrgan-ncnn/models/realesrgan-x4plus-anime.bin"),
+  new Model("realesrgan-x4plus.bin", "A RealESRGAN model trained on mixed images for 4x upscaling.", "", 0, false, false, true, REALESRGAN_SCRIPT, "realesrgan-ncnn/models/realesrgan-x4plus.bin"),
+  new Model("realesrgan-anime-video.bin", "A RealESRGAN model trained on anime images for video upscaling.", "", 0, false, false, true, REALESRGAN_SCRIPT, "realesrgan-ncnn/models/realesrgan-anime-video.bin")
 ];
 const aiModels = defineEventHandler(async (event) => {
   const modelsPath = path.join(process.env.HOME || process.env.USERPROFILE || "", "Documents", "eiko", "models");
@@ -1140,6 +1165,10 @@ const aiModels = defineEventHandler(async (event) => {
     installModel: async () => {
       const body = await readBody(event);
       return installModel(body.model, modelsPath);
+    },
+    deleteModel: async () => {
+      const body = await readBody(event);
+      return deleteModel(body.model);
     }
   };
   if (methodName && methodName in methodMap) {
@@ -1157,10 +1186,12 @@ async function getInstalledModels(modelsPath) {
         const file = dirent.name;
         if (file === "realesrgan-ncnn") {
           const realEsrganFolder = path.join(modelsPath, file);
-          const realEsrganModels = await promises.readdir(realEsrganFolder, { withFileTypes: true });
+          const realEsrganModelsFolder = path.join(realEsrganFolder, "models");
+          const realEsrganModels = await promises.readdir(realEsrganModelsFolder, { withFileTypes: true });
+          installedModels.push(file);
           for (const realEsrganDirent of realEsrganModels) {
             if (realEsrganDirent.isFile() && realEsrganDirent.name.endsWith(".bin")) {
-              installedModels.push(realEsrganDirent.name);
+              installedModels.push(realEsrganDirent.name.trim());
             }
           }
         }
@@ -1168,12 +1199,14 @@ async function getInstalledModels(modelsPath) {
       }
     }
     let models = [];
-    for (const model of modelsCache) {
+    modelsCache.forEach((model) => {
       if (installedModels.includes(model.name)) {
         model.setInstalled(true);
+      } else {
+        model.setInstalled(false);
       }
       models.push(model);
-    }
+    });
     return { models };
   } catch (error) {
     return { error: "Could not retrieve models." };
@@ -1206,10 +1239,26 @@ async function installModel(model, modelsPath) {
     return { error: `Error installing model ${model.name}. Please try again.` };
   }
 }
+async function deleteModel(model) {
+  const modelPath = path.join(process.env.HOME || process.env.USERPROFILE || "", "Documents", "eiko", "models", model.name);
+  try {
+    await promises.rmdir(
+      modelPath,
+      {
+        recursive: true
+      }
+    );
+    console.log(`Model ${model.name} deleted successfully.`);
+  } catch (error) {
+    console.error(`Error deleting model ${model.name}:`, error);
+    throw error;
+  }
+}
 
 const aiModels$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: aiModels,
+  deleteModel: deleteModel,
   installModel: installModel
 });
 

@@ -7,8 +7,8 @@
     <div class="ai-model-cards">
       <div v-for="(model, index) in models" :key="index" class="ai-model-card">
         <div class="ai-model-card-header">
-          <font-awesome-icon :icon="model.isInstalled ? ['fas', 'check-circle'] : ['fas', 'times-circle']"
-            :class="model.isInstalled ? 'status-icon-green' : 'status-icon-red'" />
+          <font-awesome-icon :icon="model.installed ? ['fas', 'check-circle'] : ['fas', 'times-circle']"
+            :class="model.installed ? 'status-icon-green' : 'status-icon-red'" />
           <h2>{{ model.name }}</h2>
         </div>
         <div class="ai-model-card-description">
@@ -21,11 +21,11 @@
           <hr class="gradient-line" />
           <div class="ai-model-card-footer-panel">
             <button class="ai-model-card-footer-button" @click="installModel(model)"
-              :disabled="model.isInstalled || model.isInstalling">
+              :disabled="model.installed || model.isInstalling">
               <font-awesome-icon :icon="['fas', 'download']" />
             </button>
             <button class="ai-model-card-footer-button" @click="deleteModel(model)"
-              :disabled="!model.isInstalled || model.isInstalling">
+              :disabled="!model.installed || model.isInstalling">
               <font-awesome-icon :icon="['fas', 'trash']" />
             </button>
           </div>
@@ -36,10 +36,10 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { library } from '@fortawesome/fontawesome-svg-core';
-import { faDownload, faTrash, faCheckCircle, faTimesCircle } from '@fortawesome/free-solid-svg-icons';
+import { faCheckCircle, faDownload, faTimesCircle, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { onMounted } from 'vue';
 import aiModels from '../controller/ai-models';
 
 let models = await aiModels.getInstalledModels();
@@ -54,10 +54,25 @@ onMounted(async () => {
   }
 });
 
-
 const installModel = async (model) => {
   console.log('Installing model:', model);
+
+  const button = event.target;
+  button.classList.add('is-loading');
+
+
   await aiModels.installModel(model);
+  window.location.reload();
+};
+
+const deleteModel = async (model) => {
+  console.log('Deleting model:', model);
+
+  const button = event.target;
+  button.classList.add('is-loading');
+
+  await aiModels.deleteModel(model);
+  window.location.reload();
 };
 
 library.add(faDownload, faTrash, faCheckCircle, faTimesCircle);
@@ -187,9 +202,9 @@ library.add(faDownload, faTrash, faCheckCircle, faTimesCircle);
   overflow: hidden;
 }
 
-.progress-bar {
-  height: 100%;
-  background: linear-gradient(to right, #f50057, #ff4081, #e040fb);
-  transition: width 0.3s ease-in-out;
+.is-loading {
+  background-color: rgba(255, 255, 255, 0.1);
+  cursor: not-allowed;
 }
+
 </style>

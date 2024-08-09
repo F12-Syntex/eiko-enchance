@@ -82,9 +82,26 @@ export async function installModel(model: Model): Promise<void> {
   }
 }
 
+export async function deleteModel(model: Model): Promise<void> {
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'x-method-name': 'deleteModel',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ model: model })
+    });
+  } catch (error) {
+    console.error('API request failed:', error);
+    throw error;
+  }
+}
+
 
 export default {
   getInstalledModels,
   getAllModels,
-  installModel
+  installModel,
+  deleteModel
 };

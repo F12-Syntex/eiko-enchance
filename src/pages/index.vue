@@ -1,60 +1,76 @@
 <template>
-  <div class="home-page">
-    <div class="upload-section" @dragover.prevent @drop.prevent="handleFileDrop">
-      <p>Drag & Drop your files here or click to upload</p>
-      <input type="file" accept="image/*, video/*" @change="handleFileUpload" />
-      <div v-if="previewUrl" class="preview">
-        <img v-if="fileType === 'image'" :src="previewUrl" alt="Preview" />
-        <video v-else-if="fileType === 'video'" :src="previewUrl" controls></video>
+  <div class="app-container">
+    <header>
+      <h1>AI Image Upscaler</h1>
+    </header>
+    <main>
+      <div class="upload-area" @dragover.prevent @drop.prevent="handleFileDrop" @click="triggerFileInput">
+        <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*, video/*"
+          style="display: none;" />
+        <div v-if="!previewUrl" class="upload-prompt">
+          <i class="fas fa-cloud-upload-alt"></i>
+          <p>Drag & Drop or Click to Upload</p>
+        </div>
+        <div v-else class="preview-container">
+          <img v-if="fileType === 'image'" :src="previewUrl" alt="Preview" />
+          <video v-else-if="fileType === 'video'" :src="previewUrl" controls></video>
+        </div>
       </div>
-    </div>
-
-    <div class="options-section">
-      <div class="scale-section">
-        <div class="slider-container">
-          <input
-            type="range"
-            id="scale-ratio"
-            min="1"
-            max="4"
-            step="1"
-            v-model="scaleRatio"
-            :style="`background: linear-gradient(to right, #6c63ff ${(scaleRatio - 1) * 33.3333}%, #bbb ${(scaleRatio - 1) * 33.3333}%);`"
-          />
-          <div class="slider-label">
-            <span>1x</span>
-            <span>2x</span>
-            <span>3x</span>
-            <span>4x</span>
+      <div class="controls">
+        <div class="scale-control">
+          <label for="scale-ratio">Upscale Factor</label>
+          <div class="scale-slider">
+            <input type="range" id="scale-ratio" min="1" max="4" step="1" v-model="scaleRatio" />
+            <div class="scale-labels">
+              <span v-for="n in 4" :key="n">{{ n }}x</span>
+            </div>
           </div>
+          <span class="scale-value">{{ scaleRatio }}x</span>
         </div>
-        <div class="scale-display">Scale Ratio: {{ scaleRatio }}x</div>
-      </div>
-
-      <div class="ai-tool-section">
-        <div class="custom-select">
-          <select id="ai-tool" v-model="selectedAiTool">
-            <option value="">Select an AI tool</option>
-            <option value="tool1">AI Tool 1</option>
-            <option value="tool2">AI Tool 2</option>
-            <option value="tool3">AI Tool 3</option>
+        <div class="ai-model-control">
+          <label for="ai-model">AI Model</label>
+          <select id="ai-model" v-model="selectedAiTool">
+            <option value="">Select an AI model</option>
+            <option v-for="model in availableModels" :key="model.id" :value="model.id">{{ model.name }}</option>
           </select>
-          <span class="arrow">&#9662;</span>
         </div>
+        <button class="process-button" @click="processImage" :disabled="!canProcess">
+          <span>Process</span>
+          <i class="fas fa-arrow-right"></i>
+        </button>
       </div>
-
-      <button class="process-button">Process</button>
-    </div>
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import aiModels from '../controller/ai-models';
 
+const fileInput = ref(null);
 const previewUrl = ref('');
 const fileType = ref('');
 const scaleRatio = ref(1);
 const selectedAiTool = ref('');
+
+const availableModels = ref([]);
+
+let canProcess = computed(() => selectedAiTool.value != '' && previewUrl.value != '');
+// let canProcess = true;
+// let canProcess = computed(() => selectedAiTool.value !== '');
+
+
+async function loadModels() {
+  let { models } = await aiModels.getInstalledModels();
+  availableModels.value = models.filter((model) => model.usable);
+  console.log('Available Models:', availableModels.value);
+}
+
+loadModels();
+
+function triggerFileInput() {
+  fileInput.value.click();
+}
 
 function handleFileUpload(event) {
   const file = event.target.files[0];
@@ -71,183 +87,204 @@ function handleFileDrop(event) {
     fileType.value = file.type.startsWith('image') ? 'image' : 'video';
   }
 }
+
+function processImage() {
+  //get the selecter and check the selected value
+  // const model = selectedAiTool.value;
+  //get the selector from the id ai-model then get the value
+  const model = document.getElementById('ai-model').value;
+  console.log('Processing image with:', { scaleRatio: scaleRatio.value, aiModel: model });
+}
 </script>
 
 <style scoped>
-.home-page {
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css');
+
+.app-container {
+  font-family: 'Poppins', sans-serif;
+  color: #e0e0e0;
+  min-height: 100vh;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  width: 100%;
-  padding: 20px;
-  overflow: hidden;
-  color: #f0f0f0;
+  padding: 2rem;
+
+
 }
 
-.upload-section {
+header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+h1 {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 2rem;
+}
+
+.upload-area {
   width: 100%;
-  max-width: 900px;
-  height: 400px;
-  padding: 40px;
-  margin-bottom: 20px;
-  border: 2px dashed #6c63ff;
-  background-color: transparent;
-  border-radius: 15px;
-  transition: background-color 0.3s ease;
+  max-width: 80%;
+  height: 40%;
+  min-height: 400px;
+  border: 3px dashed #4a4a4a;
+  border-radius: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.upload-section:hover {
-  background-color: rgba(108, 99, 255, 0.1);
+.upload-area:hover {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
-.upload-section p {
-  font-size: 20px;
-  color: #bbb;
+.upload-prompt {
+  text-align: center;
 }
 
-.upload-section input {
-  display: none;
+.upload-prompt i {
+  font-size: 4rem;
+  color: #808080;
+  margin-bottom: 1rem;
 }
 
-.preview {
-  margin-top: 20px;
-  max-width: 100%;
-  max-height: 350px;
-  overflow: hidden;
+.preview-container {
+  width: 100%;
+  height: 100%;
   display: flex;
   justify-content: center;
-  border-radius: 15px;
-  background-color: #1c1c1e;
-  padding: 10px;
+  align-items: center;
 }
 
-.preview img,
-.preview video {
+.preview-container img,
+.preview-container video {
   max-width: 100%;
   max-height: 100%;
   border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  object-fit: contain;
 }
 
-.options-section {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  padding: 20px;
-  background-color: #1c1c1e;
-  box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-}
-
-.scale-section {
+.controls {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 600px;
 }
 
-.slider-container {
+.scale-control,
+.ai-model-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #b0b0b0;
+}
+
+.scale-slider {
   position: relative;
-  width: 300px;
 }
 
 input[type="range"] {
   width: 100%;
-  margin-top: 20px;
-  appearance: none;
-  height: 6px;
-  border-radius: 3px;
-  outline: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 8px;
+  background: #2a2a2a;
+  border-radius: 4px;
 }
 
 input[type="range"]::-webkit-slider-thumb {
-  appearance: none;
-  width: 24px;
+  -webkit-appearance: none;
   height: 24px;
-  background-color: #f0f0f0;
+  width: 24px;
   border-radius: 50%;
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  background: #ffffff;
+  margin-top: -8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 }
 
-.slider-label {
+.scale-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
-  color: #bbb;
-  margin-top: 5px;
+  margin-top: 0.5rem;
 }
 
-.scale-display {
-  margin-top: 10px;
-  font-size: 16px;
-  color: #f0f0f0;
-  text-align: center;
-}
-
-.ai-tool-section {
-  display: flex;
-  align-items: center;
-}
-
-.custom-select {
-  position: relative;
-  display: inline-block;
-  width: 200px;
+.scale-value {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #ffffff;
+  align-self: center;
 }
 
 select {
-  padding: 12px;
-  width: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  color: #f0f0f0;
-  border: none;
+  padding: 0.8rem;
   border-radius: 10px;
-  appearance: none;
+  background-color: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #3a3a3a;
+  font-size: 1rem;
   cursor: pointer;
-  outline: none;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  font-size: 16px;
-  backdrop-filter: brightness(1.2);
-}
-
-select option {
-  background-color: rgba(0, 0, 0, 0.5);
-}
-
-.arrow {
-  position: absolute;
-  top: 50%;
-  right: 15px;
-  pointer-events: none;
-  transform: translateY(-50%);
-  color: #f0f0f0;
 }
 
 .process-button {
-  padding: 12px 24px;
-  background-color: #6c63ff;
+  background-color: #3a3a3a;
   color: #ffffff;
   border: none;
+  padding: 1rem 2rem;
   border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
   cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.3s ease, color 0.3s ease;
-  font-size: 16px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
-.process-button:hover {
-  background-color: #ffffff;
-  color: #6c63ff;
+.process-button:hover:not(:disabled) {
+  background-color: #4a4a4a;
+  transform: translateY(-2px);
+}
+
+.process-button:disabled {
+  background-color: #2a2a2a;
+  color: #808080;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 1rem;
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
+
+  .upload-area {
+    height: 200px;
+  }
 }
 </style>
