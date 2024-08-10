@@ -33,7 +33,7 @@
                 </template>
             </div>
         </div>
-        <div v-if="previewItem" class="media-preview">
+        <div v-if="previewItem" class="media-preview" tabindex="0" ref="mediaPreview">
             <div class="preview-content">
                 <button class="close-preview" @click="closePreview">&times;</button>
                 <img v-if="previewItem.type === 'image'" :src="previewItem.url" :alt="previewItem.name">
@@ -42,23 +42,41 @@
                     Your browser does not support the video tag.
                 </video>
             </div>
+            <div class="preview-navigation">
+                <button @click="navigatePreview(-1)" class="nav-button prev">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="feather feather-chevron-left">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <button @click="navigatePreview(1)" class="nav-button next">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="feather feather-chevron-right">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, nextTick, onUnmounted } from 'vue';
 import useElectron from '../../composables/useElectron';
 import SettingsManager from '../managers/SettingsManager';
 
 const items = ref([]);
 const currentPath = ref([]);
 const previewItem = ref(null);
+const mediaPreview = ref(null);
 
 const sortedItems = computed(() => {
     return [...items.value].sort((a, b) => {
-        const typeOrder = { image: 0, video: 1, directory: 2 };
-        return typeOrder[a.type] - typeOrder[b.type] || a.name.localeCompare(b.name);
+        if (a.type === 'directory' && b.type !== 'directory') return 1;
+        if (b.type === 'directory' && a.type !== 'directory') return -1;
+        return a.name.localeCompare(b.name);
     });
 });
 
@@ -79,6 +97,11 @@ const goBack = () => {
 
 const previewMedia = (item) => {
     previewItem.value = item;
+    nextTick(() => {
+        if (mediaPreview.value) {
+            mediaPreview.value.focus();
+        }
+    });
 };
 
 const closePreview = () => {
@@ -137,11 +160,26 @@ const generateThumbnail = (url, type) => {
         img.onload = () => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            const scaleFactor = 0.25; // Reduce resolution to 25%
-            canvas.width = img.width * scaleFactor;
-            canvas.height = img.height * scaleFactor;
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            resolve(canvas.toDataURL('image/jpeg', 0.7)); // Reduce quality to 70%
+
+            const targetWidth = 256;
+            const targetHeight = 144;
+
+            const aspectRatio = img.width / img.height;
+
+            let width, height;
+            if (aspectRatio > targetWidth / targetHeight) {
+                width = targetWidth;
+                height = targetWidth / aspectRatio;
+            } else {
+                height = targetHeight;
+                width = targetHeight * aspectRatio;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.7));
         };
         if (type === 'video') {
             const video = document.createElement('video');
@@ -149,7 +187,7 @@ const generateThumbnail = (url, type) => {
             video.muted = true;
             video.preload = 'metadata';
             video.onloadeddata = () => {
-                video.currentTime = 1; // Set to 1 second to avoid black frames at the beginning
+                video.currentTime = 1;
             };
             video.onseeked = () => {
                 img.src = getVideoFrame(video);
@@ -168,182 +206,267 @@ const getVideoFrame = (video) => {
     return canvas.toDataURL('image/jpeg');
 };
 
+const navigatePreview = (direction) => {
+    const mediaItems = sortedItems.value.filter(item => item.type === 'image' || item.type === 'video');
+    const currentIndex = mediaItems.findIndex(item => item.name === previewItem.value.name);
+    let newIndex = currentIndex + direction;
+
+    if (newIndex < 0) {
+        newIndex = mediaItems.length - 1;
+    } else if (newIndex >= mediaItems.length) {
+        newIndex = 0;
+    }
+
+    previewItem.value = mediaItems[newIndex];
+};
+
+const handleKeydown = (event) => {
+    event.preventDefault();
+    if (event.key === 'ArrowLeft') {
+        navigatePreview(-1);
+    } else if (event.key === 'ArrowRight') {
+        navigatePreview(1);
+    } else if (event.key === 'Escape') {
+        closePreview();
+    }
+};
+
 onMounted(async () => {
     await loadCurrentFolder();
     await generateThumbnails();
+    window.addEventListener('keydown', handleKeydown);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', handleKeydown);
 });
 
 watch(currentPath, async () => {
     await loadCurrentFolder();
     await generateThumbnails();
 }, { deep: true });
+
 </script>
+
 <style scoped>
 .library-container {
-  width: 100%;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  color: #ffffff;
-  overflow: hidden;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    color: #ffffff;
+    overflow: hidden;
 }
 
 .folder-navigation {
-  padding: 15px;
-  border-bottom: 1px solid #333333;
-  display: flex;
-  align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #333333;
+    display: flex;
+    align-items: center;
 }
 
 .back-button {
-  display: flex;
-  align-items: center;
-  background: none;
-  border: none;
-  color: #ffffff;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 5px 10px;
-  border-radius: 4px;
-  transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background-color 0.3s;
 }
 
 .back-button:hover:not(:disabled) {
-  background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .back-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .back-button svg {
-  width: 20px;
-  height: 20px;
-  margin-right: 5px;
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
 }
 
 .current-path {
-  margin-left: 15px;
-  font-size: 14px;
-  opacity: 0.8;
+    margin-left: 15px;
+    font-size: 14px;
+    opacity: 0.8;
 }
 
 .library-content {
-  flex-grow: 1;
-  display: flex;
-  flex-wrap: wrap;
-  overflow-y: auto;
-  padding: 15px;
-  align-content: flex-start;
-  height: 0;
+    flex-grow: 1;
+    display: flex;
+    flex-wrap: wrap;
+    overflow-y: auto;
+    padding: 15px;
+    align-content: flex-start;
+    height: 0;
+}
+
+.media-preview {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    outline: none;
 }
 
 .library-item {
-  width: 150px;
-  height: 150px;
-  margin: 10px;
-  text-align: center;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: transform 0.3s, background-color 0.3s;
-  overflow: hidden;
+    width: 150px;
+    height: 150px;
+    margin: 10px;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: transform 0.3s, background-color 0.3s;
+    overflow: hidden;
 }
 
 .library-item:hover {
-  background-color: #2d2d2d;
-  transform: translateY(-5px);
+    background-color: #2d2d2d;
+    transform: translateY(-5px);
 }
 
 .folder,
 .image,
 .video {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
 }
 
 .folder i {
-  font-size: 50px;
-  margin-bottom: 10px;
-  color: #0e639c;
+    font-size: 50px;
+    margin-bottom: 10px;
+    color: #0e639c;
 }
 
 .video-thumbnail,
 .image img {
-  max-width: 100%;
-  max-height: 80%;
-  object-fit: cover;
-  border-radius: 4px;
+    max-width: 100%;
+    max-height: 80%;
+    object-fit: cover;
+    border-radius: 4px;
 }
 
 .library-item span {
-  font-size: 14px;
-  margin-top: 5px;
-  word-break: break-word;
-  padding: 0 5px;
+    font-size: 14px;
+    margin-top: 5px;
+    word-break: break-word;
+    padding: 0 5px;
 }
 
 .media-preview {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.9);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
 }
 
 .preview-content {
-  max-width: 90%;
-  max-height: 90%;
-  position: relative;
+    max-width: 90%;
+    max-height: 90%;
+    position: relative;
 }
 
 .preview-content img,
 .preview-content video {
-  max-width: 100%;
-  max-height: 100%;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .close-preview {
-  position: absolute;
-  top: -40px;
-  right: -40px;
-  background: none;
-  border: none;
-  color: #ffffff;
-  font-size: 32px;
-  cursor: pointer;
-  opacity: 0.8;
-  transition: opacity 0.3s;
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 32px;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.3s;
 }
 
 .close-preview:hover {
-  opacity: 1;
+    opacity: 1;
 }
 
 .library-content::-webkit-scrollbar {
-  width: 10px;
+    width: 10px;
 }
 
 .library-content::-webkit-scrollbar-track {
-  background: #1e1e1e;
+    background: #1e1e1e;
 }
 
 .library-content::-webkit-scrollbar-thumb {
-  background: #424242;
-  border-radius: 5px;
+    background: #424242;
+    border-radius: 5px;
 }
 
 .library-content::-webkit-scrollbar-thumb:hover {
-  background: #4f4f4f;
+    background: #4f4f4f;
+}
+
+.preview-navigation {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    transform: translateY(-50%);
+}
+
+.nav-button {
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    color: #ffffff;
+    font-size: 24px;
+    padding: 15px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.nav-button:hover {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.nav-button svg {
+    width: 30px;
+    height: 30px;
+}
+
+.prev {
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.next {
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
 }
 </style>

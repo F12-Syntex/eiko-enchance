@@ -6,11 +6,32 @@ body {
 body.dark-mode {
   background-color: #121212;
   color: #7e7c7c;
+  outline: none !important;
 }
 
 body.light-mode {
   background-color: #eaeaea;
   color: #333333;
+  outline: none !important;
+}
+
+
+* {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-focus-ring-color: transparent;
+}
+
+:focus {
+  outline: none !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+button:focus {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Sidebar styles */
