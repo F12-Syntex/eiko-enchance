@@ -13,7 +13,7 @@
         </div>
         <div class="library-content">
             <div v-for="item in currentItems" :key="item.name" class="library-item">
-                <template v-if="item.type === 'folder'">
+                <template v-if="item.type === 'directory'">
                     <div class="folder" @click="openFolder(item.name)">
                         <i class="fas fa-folder"></i>
                         <span>{{ item.name }}</span>
@@ -51,43 +51,31 @@ import { ref, computed, onMounted } from 'vue';
 import useElectron from '../../composables/useElectron';
 import SettingsManager from '../managers/SettingsManager';
 
-const items = ref([
-    {
-        name: 'Folder 1', type: 'folder', contents: [
-            { name: 'image1.jpg', type: 'image', url: '/path/to/image1.jpg' },
-            { name: 'video1.mp4', type: 'video', url: '/path/to/video1.mp4' },
-        ]
-    },
-    {
-        name: 'Folder 2', type: 'folder', contents: [
-            { name: 'image2.png', type: 'image', url: '/path/to/image2.png' },
-        ]
-    },
-    { name: 'image3.jpg', type: 'image', url: '/path/to/image3.jpg' },
-    { name: 'video2.mp4', type: 'video', url: '/path/to/video2.mp4' },
-]);
-
+const items = ref([]);
 const currentPath = ref([]);
 const previewItem = ref(null);
 
 const currentItems = computed(() => {
     let current = items.value;
     for (const folder of currentPath.value) {
-        current = current.find(item => item.name === folder && item.type === 'folder').contents;
+        current = current.find(item => item.name === folder && item.type === 'directory').contents;
     }
     return current;
 });
 
 const currentPathString = computed(() => {
-    return '/' + currentPath.value.join('/');
+    const basePath = SettingsManager.getSettings().upscalerDirectory;
+    return basePath + (currentPath.value.length > 0 ? '/' + currentPath.value.join('/') : '');
 });
 
 const openFolder = (folderName) => {
     currentPath.value.push(folderName);
+    loadCurrentFolder();
 };
 
 const goBack = () => {
     currentPath.value.pop();
+    loadCurrentFolder();
 };
 
 const previewMedia = (item) => {
@@ -98,12 +86,37 @@ const closePreview = () => {
     previewItem.value = null;
 };
 
-onMounted(async () => {
-    console.log('hi');
-    const upscaledPath = SettingsManager.getSettings().upscalerDirectory;
+const getFileType = (fileName) => {
+    const extension = fileName.split('.').pop().toLowerCase();
+    if (['.jpg', '.jpeg', '.png', '.gif', '.bmp'].includes('.' + extension)) {
+        return 'image';
+    } else if (['.mp4', '.webm', '.ogg'].includes('.' + extension)) {
+        return 'video';
+    }
+    return 'other';
+};
+
+const loadCurrentFolder = async () => {
     const { fileExplorer } = useElectron();
-    const files = await fileExplorer.exploreFolder(upscaledPath);
-    console.log(files);
+    const currentFullPath = currentPathString.value;
+    const files = await fileExplorer.exploreFolder(currentFullPath);
+
+    items.value = files.map(file => {
+        console.log(file);
+        const type = file.isDirectory ? 'directory' : getFileType(file.name);
+
+        return {
+            name: file.name,
+            type: type,
+            // url: `file://${currentFullPath}/${file.name}`,
+            url: `local-file://${file.absulutePath}`,
+            contents: file.isDirectory ? [] : undefined
+        };
+    });
+};
+
+onMounted(async () => {
+    await loadCurrentFolder();
 });
 </script>
 

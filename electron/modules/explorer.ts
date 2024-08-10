@@ -46,10 +46,20 @@ export default (mainWindow: BrowserWindow) => {
   })
 
   ipcMain.handle('dialog:getFiles', async (event, path: string) => {
-    //get all the absulute paths of the files in the folder
-    const files = fs.readdirSync(path).map(file => {
-      return paths.join(path, file)
-    });
+    //return all the file objects in the given path
+    const files = fs.readdirSync(path).map((file) => {
+      const filePath = paths.join(path, file)
+      //return the file object such as .isDirectory(), .isFile(), .size, .name, .ext, .path
+      //also make the file available in the frontend as currently it doesnt have permission to access the file
+      return {
+        isDirectory: fs.statSync(filePath as fs.PathLike).isDirectory(), 
+        isFile: fs.statSync(filePath as fs.PathLike).isFile(),
+        size: fs.statSync(filePath as fs.PathLike).size, 
+        name: file, 
+        ext: paths.extname(file),
+        absulutePath: filePath,
+      }
+    })
 
     return files
   })

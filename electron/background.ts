@@ -1,6 +1,6 @@
 import * as path from 'path'
 import * as os from 'os'
-import { app, BrowserWindow, session } from 'electron'
+import { app, BrowserWindow, protocol, session } from 'electron'
 import singleInstance from './singleInstance'
 import dynamicRenderer from './dynamicRenderer'
 import titleBarActionsModule from './modules/titleBarActions'
@@ -9,6 +9,7 @@ import updaterModule from './modules/updater'
 import macMenuModule from './modules/macMenu'
 import appController from './modules/appController'
 import { application } from 'express'
+import url from 'url'
 
 // Initilize
 // =========
@@ -75,6 +76,7 @@ app.whenReady().then(async () => {
 
   // Load renderer process
   dynamicRenderer(mainWindow)
+  
 
   // Initialize modules
   console.log('-'.repeat(30) + '\n[+] Loading modules...')
@@ -84,6 +86,11 @@ app.whenReady().then(async () => {
     } catch (err: any) {
       console.log('[!] Module error: ', err.message || err)
     }
+  })
+
+  protocol.registerFileProtocol('local-file', (request, callback) => {
+    const filePath = url.fileURLToPath('file://' + request.url.slice('local-file://'.length))
+    callback(filePath)
   })
 
   console.log('[!] Loading modules: Done.' + '\r\n' + '-'.repeat(30))
