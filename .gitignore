@@ -18,3 +18,17 @@ debug.json
 errors.json
 
 Documents/eiko/upscaled/
+
+nuxt-build/dev/index.mjs
+
+nuxt-build/dev/index.mjs.map
+
+nuxt-build/manifest/latest.json
+
+nuxt-build/manifest/meta/dev.json
+
+nuxt-build/nitro.json
+
+nuxt-build/nuxt.d.ts
+
+nuxt-build/tailwind.config.cjs
