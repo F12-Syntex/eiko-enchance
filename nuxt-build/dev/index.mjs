@@ -1346,7 +1346,7 @@ async function upscale(event, modelInfo, scaleRatio, exportFilePath, cacheDir, s
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir);
     }
-    const command = `${ffmpegPath} -i "${sourceFile}" -vframes 3 "${outputDir}\\%04d.png" -vframes 3`;
+    const command = `${ffmpegPath} -i "${sourceFile}" "${outputDir}\\%04d.png"`;
     console.log(`command: ${command}`);
     const fps = 30;
     return new Promise((resolve, reject) => {
@@ -1384,7 +1384,7 @@ async function upscale(event, modelInfo, scaleRatio, exportFilePath, cacheDir, s
   return { message: "C:/Users/username/Documents/eiko/models" };
 }
 function createVideoFromFrames(ffmpegPath, outputDir, exportFilePath, frameRate) {
-  const command = `${ffmpegPath} -framerate ${frameRate} -i ${outputDir}\\%04d.png -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p ${exportFilePath}`;
+  const command = `${ffmpegPath} -framerate ${frameRate} -i ${outputDir}\\%04d.png -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -threads 0 -stats -progress pipe:1 ${exportFilePath}`;
   return new Promise((resolve, reject) => {
     var _a;
     const upscaleProcess = exec(command);

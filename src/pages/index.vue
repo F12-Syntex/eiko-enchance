@@ -120,7 +120,7 @@ async function processImage() {
 
   console.log('Processing file:', request);
 
-  // await monitorProgress();
+  await monitorProgress();
 
   try {
     const response = await fetch('/api/upscaler', {
@@ -164,19 +164,19 @@ async function monitorProgress() {
       console.log('Progress:', currentProgress);
       progress.value = currentProgress;
 
-      if (currentProgress > 0) {
-        isStarted = true;
-      }
+      // if (currentProgress > 0) {
+      //   isStarted = true;
+      // }
 
       if (isStarted && currentProgress === 0 && lastProgress > 0) {
         console.log('Process completed (reset to 0)');
         return;
       }
 
-      if (currentProgress >= 100) {
-        console.log('Process completed (100%)');
-        return;
-      }
+      // if (currentProgress >= 100) {
+      //   console.log('Process completed (100%)');
+      //   return;
+      // }
 
       lastProgress = currentProgress;
       requestAnimationFrame(scheduleNextCheck);

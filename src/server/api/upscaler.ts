@@ -87,10 +87,10 @@ async function upscale(event: H3Event, modelInfo: Model, scaleRatio: any, export
     }
 
     //first extract all the frames to the output directory in the folder called {name}_frames
-    const command = `${ffmpegPath} -i "${sourceFile}" -vframes 3 "${outputDir}\\%04d.png" -vframes 3`
+    const command = `${ffmpegPath} -i "${sourceFile}" "${outputDir}\\%04d.png"`
     console.log(`command: ${command}`)
 
-    const fps = 30;
+    const fps = 30
 
     // only run the command for now
     return new Promise((resolve, reject) => {
@@ -141,7 +141,7 @@ async function upscale(event: H3Event, modelInfo: Model, scaleRatio: any, export
   return { message: 'C:/Users/username/Documents/eiko/models' }
 }
 function createVideoFromFrames(ffmpegPath: string, outputDir: string, exportFilePath: string, frameRate: any) {
-  const command = `${ffmpegPath} -framerate ${frameRate} -i ${outputDir}\\%04d.png -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p ${exportFilePath}`
+  const command = `${ffmpegPath} -framerate ${frameRate} -i ${outputDir}\\%04d.png -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -threads 0 -stats -progress pipe:1 ${exportFilePath}`
 
   return new Promise((resolve, reject) => {
     const upscaleProcess = exec(command)
