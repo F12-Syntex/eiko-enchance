@@ -12,7 +12,7 @@
             <span class="current-path">{{ currentPathString }}</span>
         </div>
         <div class="library-content">
-            <div v-for="item in currentItems" :key="item.name" class="library-item">
+            <div v-for="item in sortedItems" :key="item.name" class="library-item">
                 <template v-if="item.type === 'directory'">
                     <div class="folder" @click="openFolder(item.name)">
                         <i class="fas fa-folder"></i>
@@ -21,13 +21,13 @@
                 </template>
                 <template v-else-if="item.type === 'image'">
                     <div class="image" @click="previewMedia(item)">
-                        <img :src="item.url" :alt="item.name">
+                        <img :src="item.thumbnailUrl" :alt="item.name">
                         <span>{{ item.name }}</span>
                     </div>
                 </template>
                 <template v-else-if="item.type === 'video'">
                     <div class="video" @click="previewMedia(item)">
-                        <i class="fas fa-video"></i>
+                        <img :src="item.thumbnailUrl" :alt="item.name" class="video-thumbnail">
                         <span>{{ item.name }}</span>
                     </div>
                 </template>
@@ -47,7 +47,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import useElectron from '../../composables/useElectron';
 import SettingsManager from '../managers/SettingsManager';
 
@@ -55,24 +55,16 @@ const items = ref([]);
 const currentPath = ref([]);
 const previewItem = ref(null);
 
-const currentItems = computed(() => {
-    let current = items.value;
-    for (const folder of currentPath.value) {
-        const folderItem = current.find(item => item.name === folder && item.type === 'directory');
-        if (folderItem) {
-            current = folderItem.contents;
-        } else {
-            // Handle the case where the folder doesn't exist or is not a directory
-            current = [];
-            break;
-        }
-    }
-    return current;
+const sortedItems = computed(() => {
+    return [...items.value].sort((a, b) => {
+        const typeOrder = { image: 0, video: 1, directory: 2 };
+        return typeOrder[a.type] - typeOrder[b.type] || a.name.localeCompare(b.name);
+    });
 });
 
 const currentPathString = computed(() => {
     const basePath = SettingsManager.getSettings().upscalerDirectory;
-    return basePath + (currentPath.value.length > 0 ? '\\' + currentPath.value.join('/') : '');
+    return basePath + (currentPath.value.length > 0 ? '\\' + currentPath.value.join('\\') : '');
 });
 
 const openFolder = (folderName) => {
@@ -95,9 +87,9 @@ const closePreview = () => {
 
 const getFileType = (fileName) => {
     const extension = fileName.split('.').pop().toLowerCase();
-    if (['.jpg', '.jpeg', '.png', '.gif', '.bmp'].includes('.' + extension)) {
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp'].includes(extension)) {
         return 'image';
-    } else if (['.mp4', '.webm', '.ogg'].includes('.' + extension)) {
+    } else if (['mp4', 'webm', 'ogg'].includes(extension)) {
         return 'video';
     }
     return 'other';
@@ -116,199 +108,242 @@ const loadCurrentFolder = async () => {
 
         return files.map(file => {
             const type = file.isDirectory ? 'directory' : getFileType(file.name);
-            const absulutePath = `${currentFullPath}/${file.name}`;
+            const absolutePath = `${currentFullPath}\\${file.name}`;
 
-            if (type === 'directory') {
-                const subFiles = fileExplorer.exploreFolder(absulutePath);
-                const contents = processFiles(subFiles);
-
-                return {
-                    name: file.name,
-                    type: 'directory',
-                    url: `local-file://${absulutePath}`,
-                    contents
-                };
-            } else {
-                return {
-                    name: file.name,
-                    type,
-                    url: `local-file://${absulutePath}`
-                };
-            }
+            return {
+                name: file.name,
+                type,
+                url: `local-file://${absolutePath}`,
+                thumbnailUrl: type === 'video' ? '' : `local-file://${absolutePath}`
+            };
         });
     };
 
     items.value = processFiles(filesObject);
 };
+
+const generateThumbnails = async () => {
+    for (const item of items.value) {
+        if (item.type === 'image' || item.type === 'video') {
+            item.thumbnailUrl = await generateThumbnail(item.url, item.type);
+        }
+    }
+};
+
+const generateThumbnail = (url, type) => {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const scaleFactor = 0.25; // Reduce resolution to 25%
+            canvas.width = img.width * scaleFactor;
+            canvas.height = img.height * scaleFactor;
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', 0.7)); // Reduce quality to 70%
+        };
+        if (type === 'video') {
+            const video = document.createElement('video');
+            video.src = url;
+            video.muted = true;
+            video.preload = 'metadata';
+            video.onloadeddata = () => {
+                video.currentTime = 1; // Set to 1 second to avoid black frames at the beginning
+            };
+            video.onseeked = () => {
+                img.src = getVideoFrame(video);
+            };
+        } else {
+            img.src = url;
+        }
+    });
+};
+
+const getVideoFrame = (video) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg');
+};
+
 onMounted(async () => {
     await loadCurrentFolder();
+    await generateThumbnails();
 });
-</script>
 
+watch(currentPath, async () => {
+    await loadCurrentFolder();
+    await generateThumbnails();
+}, { deep: true });
+</script>
 <style scoped>
 .library-container {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    color: #ffffff;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: #ffffff;
+  overflow: hidden;
 }
 
 .folder-navigation {
-    padding: 15px;
-    border-bottom: 1px solid #333333;
-    display: flex;
-    align-items: center;
+  padding: 15px;
+  border-bottom: 1px solid #333333;
+  display: flex;
+  align-items: center;
 }
 
 .back-button {
-    display: flex;
-    align-items: center;
-    background: none;
-    border: none;
-    color: #ffffff;
-    font-size: 16px;
-    cursor: pointer;
-    padding: 5px 10px;
-    border-radius: 4px;
-    transition: background-color 0.3s;
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
 }
 
 .back-button:hover:not(:disabled) {
-    background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .back-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .back-button svg {
-    width: 20px;
-    height: 20px;
-    margin-right: 5px;
+  width: 20px;
+  height: 20px;
+  margin-right: 5px;
 }
 
 .current-path {
-    margin-left: 15px;
-    font-size: 14px;
-    opacity: 0.8;
+  margin-left: 15px;
+  font-size: 14px;
+  opacity: 0.8;
 }
 
 .library-content {
-    flex-grow: 1;
-    display: flex;
-    flex-wrap: wrap;
-    overflow-y: auto;
-    padding: 15px;
+  flex-grow: 1;
+  display: flex;
+  flex-wrap: wrap;
+  overflow-y: auto;
+  padding: 15px;
+  align-content: flex-start;
+  height: 0;
 }
 
 .library-item {
-    width: 150px;
-    height: 150px;
-    margin: 10px;
-    text-align: center;
-    cursor: pointer;
-    border-radius: 8px;
-    transition: transform 0.3s, background-color 0.3s;
-    overflow: hidden;
+  width: 150px;
+  height: 150px;
+  margin: 10px;
+  text-align: center;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: transform 0.3s, background-color 0.3s;
+  overflow: hidden;
 }
 
 .library-item:hover {
-    background-color: #2d2d2d;
-    transform: translateY(-5px);
+  background-color: #2d2d2d;
+  transform: translateY(-5px);
 }
 
 .folder,
 .image,
 .video {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 }
 
-.folder i,
-.video i {
-    font-size: 50px;
-    margin-bottom: 10px;
-    color: #0e639c;
+.folder i {
+  font-size: 50px;
+  margin-bottom: 10px;
+  color: #0e639c;
 }
 
+.video-thumbnail,
 .image img {
-    max-width: 100%;
-    max-height: 80%;
-    object-fit: cover;
-    border-radius: 4px;
+  max-width: 100%;
+  max-height: 80%;
+  object-fit: cover;
+  border-radius: 4px;
 }
 
 .library-item span {
-    font-size: 14px;
-    margin-top: 5px;
-    word-break: break-word;
-    padding: 0 5px;
+  font-size: 14px;
+  margin-top: 5px;
+  word-break: break-word;
+  padding: 0 5px;
 }
 
 .media-preview {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.9);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 
 .preview-content {
-    max-width: 90%;
-    max-height: 90%;
-    position: relative;
+  max-width: 90%;
+  max-height: 90%;
+  position: relative;
 }
 
 .preview-content img,
 .preview-content video {
-    max-width: 100%;
-    max-height: 100%;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .close-preview {
-    position: absolute;
-    top: -40px;
-    right: -40px;
-    background: none;
-    border: none;
-    color: #ffffff;
-    font-size: 32px;
-    cursor: pointer;
-    opacity: 0.8;
-    transition: opacity 0.3s;
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 32px;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.3s;
 }
 
 .close-preview:hover {
-    opacity: 1;
+  opacity: 1;
 }
 
-/* Scrollbar styles */
-::-webkit-scrollbar {
-    width: 10px;
+.library-content::-webkit-scrollbar {
+  width: 10px;
 }
 
-::-webkit-scrollbar-track {
-    background: #1e1e1e;
+.library-content::-webkit-scrollbar-track {
+  background: #1e1e1e;
 }
 
-::-webkit-scrollbar-thumb {
-    background: #424242;
-    border-radius: 5px;
+.library-content::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 5px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-    background: #4f4f4f;
+.library-content::-webkit-scrollbar-thumb:hover {
+  background: #4f4f4f;
 }
 </style>
