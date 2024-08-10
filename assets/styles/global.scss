@@ -7,12 +7,18 @@ body.dark-mode {
   background-color: #121212;
   color: #7e7c7c;
   outline: none !important;
+  height: 100vh;
+
+  overflow-y: auto;
 }
 
 body.light-mode {
   background-color: #eaeaea;
   color: #333333;
   outline: none !important;
+  height: 100vh;
+
+  overflow-y: auto;
 }
 
 

@@ -6,7 +6,8 @@
     </header>
     <main>
       <div class="upload-area" @dragover.prevent @drop.prevent="handleFileDrop" @click="triggerFileInput">
-        <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*, video/*" style="display: none;" />
+        <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*, video/*"
+          style="display: none;" />
         <div v-if="!previewUrl" class="upload-prompt">
           <i class="fas fa-cloud-upload-alt"></i>
           <p>Drag & Drop or Click to Upload</p>
@@ -46,16 +47,20 @@
           <i class="fas fa-magic"></i>
         </button>
       </div>
-      <div v-if="processedImageUrl" class="result-section">
-        <h2>Upscaled Result</h2>
-        <div class="result-preview">
-          <img v-if="fileType === 'image'" :src="processedImageUrl" alt="Upscaled Preview" />
-          <video v-else-if="fileType === 'video'" :src="processedImageUrl" controls></video>
+      <div v-if="processedImageUrl" class="comparison-section">
+        <h2>Compare Results</h2>
+        <div class="comparison-container">
+          <div class="original">
+            <h3>Original</h3>
+            <img v-if="fileType === 'image'" :src="previewUrl" alt="Original" />
+            <video v-else-if="fileType === 'video'" :src="previewUrl" controls></video>
+          </div>
+          <div class="upscaled">
+            <h3>Upscaled</h3>
+            <img v-if="fileType === 'image'" :src="processedImageUrl" alt="Upscaled" />
+            <video v-else-if="fileType === 'video'" :src="processedImageUrl" controls></video>
+          </div>
         </div>
-        <button class="download-button" @click="downloadResult">
-          <i class="fas fa-download"></i>
-          Download Result
-        </button>
       </div>
     </main>
   </div>
@@ -69,7 +74,7 @@ import settings from '../managers/SettingsManager';
 const fileInput = ref(null);
 const previewUrl = ref('');
 const fileType = ref('');
-const scaleRatio = ref(2);
+const scaleRatio = ref(1);
 const selectedAiTool = ref('');
 const filePath = ref('');
 const isProcessing = ref(false);
@@ -249,14 +254,10 @@ onUnmounted(() => {
 });
 </script>
 
-<style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
-@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css');
-
-.app-container {
+<style scoped>.app-container {
   font-family: 'Poppins', sans-serif;
   color: #e0e0e0;
-  min-height: 100vh;
+  max-height: 100vh;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -289,6 +290,8 @@ main {
   align-items: center;
   gap: 2rem;
   flex-grow: 1;
+  overflow: auto;
+  width: 100%;
 }
 
 .upload-area {
@@ -476,7 +479,7 @@ select {
   cursor: not-allowed;
 }
 
-.result-section {
+.comparison-section {
   width: 100%;
   max-width: 80%;
   display: flex;
@@ -485,48 +488,39 @@ select {
   gap: 1rem;
 }
 
-.result-section h2 {
+.comparison-section h2 {
   font-size: 1.8rem;
   color: #ffffff;
   margin-bottom: 1rem;
 }
 
-.result-preview {
-  width: 100%;
+.comparison-container {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 2rem;
+  width: 100%;
+}
+
+.original, .upscaled {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   align-items: center;
 }
 
-.result-preview img,
-.result-preview video {
+.original h3, .upscaled h3 {
+  font-size: 1.4rem;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+}
+
+.original img, .upscaled img,
+.original video, .upscaled video {
   max-width: 100%;
   max-height: 400px;
   border-radius: 10px;
   object-fit: contain;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.download-button {
-  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-  color: #ffffff;
-  border: none;
-  padding: 1rem 2rem;
-  border-radius: 10px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.download-button:hover {
-  background: linear-gradient(135deg, #45a049 0%, #3d8b3d 100%);
-  transform: translateY(-2px);
 }
 
 @media (max-width: 768px) {
@@ -544,6 +538,11 @@ select {
 
   .control-group {
     flex-direction: column;
+  }
+
+  .comparison-container {
+    flex-direction: column;
+    gap: 1rem;
   }
 }
 

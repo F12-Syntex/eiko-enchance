@@ -48,7 +48,7 @@ function upscaleVideo(modelInfo: Model, scaleRatio: number, exportFilePath: stri
 
   const fileName = path.basename(sourceFile).split('.')[0]
   const outputDir = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1000)}_${fileName}_frames`)
-  const audioPath = path.join(exportFilePath, `${fileName}_audio.aac`)
+  const audioPath = path.join(exportFilePath, `${fileName}${Math.random() * 1000}_audio.aac`)
 
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir)
@@ -133,6 +133,10 @@ function executeCommand(command: string, outputFile?: string) {
 
     process.on('error', (error) => {
       reject(error)
+    })
+
+    process.stderr?.on('data', (data) => {
+      console.log(`stderr: ${data}`)
     })
   })
 }
