@@ -6,8 +6,7 @@
     </header>
     <main>
       <div class="upload-area" @dragover.prevent @drop.prevent="handleFileDrop" @click="triggerFileInput">
-        <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*, video/*"
-          style="display: none;" />
+        <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*, video/*" style="display: none;" />
         <div v-if="!previewUrl" class="upload-prompt">
           <i class="fas fa-cloud-upload-alt"></i>
           <p>Drag & Drop or Click to Upload</p>
@@ -38,6 +37,7 @@
             </select>
           </div>
         </div>
+        <AdvancedOptions v-model:options="advancedOptions" />
         <div v-if="isProcessing" class="progress-bar">
           <div class="progress" :style="{ width: `${progress}%` }"></div>
           <span class="progress-text">{{ progress }}%</span>
@@ -68,9 +68,11 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import AdvancedOptions from '../components/AdvancedOptions.vue';
 import aiModels from '../controller/ai-models';
 import settings from '../managers/SettingsManager';
 
+const advancedOptions = ref({});
 const fileInput = ref(null);
 const previewUrl = ref('');
 const fileType = ref('');
@@ -80,6 +82,13 @@ const filePath = ref('');
 const isProcessing = ref(false);
 const progress = ref(0);
 const processedImageUrl = ref('');
+
+const tileSize = ref(512);
+const tilePad = ref(10);
+const prePad = ref(10);
+const faceEnhance = ref(true);
+const faceInst = ref('');
+const denoiseLevel = ref(0);
 
 const availableModels = ref([]);
 const intervalId = ref(null);
@@ -131,11 +140,17 @@ function handleFileDrop(event) {
   }
 }
 
-watch([scaleRatio, selectedAiTool, isProcessing], () => {
+watch([scaleRatio, selectedAiTool, isProcessing, tileSize, tilePad, prePad, faceEnhance, faceInst, denoiseLevel], () => {
   // Save to sessionStorage
   sessionStorage.setItem('scaleRatio', scaleRatio.value);
   sessionStorage.setItem('selectedAiTool', selectedAiTool.value);
   sessionStorage.setItem('isProcessing', isProcessing.value);
+  sessionStorage.setItem('tileSize', tileSize.value);
+  sessionStorage.setItem('tilePad', tilePad.value);
+  sessionStorage.setItem('prePad', prePad.value);
+  sessionStorage.setItem('faceEnhance', faceEnhance.value);
+  sessionStorage.setItem('faceInst', faceInst.value);
+  sessionStorage.setItem('denoiseLevel', denoiseLevel.value);
 });
 
 async function processImage() {
@@ -149,12 +164,23 @@ async function processImage() {
   const cacheDir = settings.getSettings().cacheDirectory;
   const sourceFile = filePath.value;
 
+
+  //update advanced options based on the data in the advanced options component
+  advancedOptions.value = {
+    tileSize: tileSize.value,
+    tilePad: tilePad.value,
+    prePad: prePad.value,
+    faceEnhance: faceEnhance.value,
+    faceInst: faceInst.value,
+    denoiseLevel: denoiseLevel.value
+  };
+
   const request = {
-    scaleRatio: scaleRatio.value,
     exportFilePath: exportFilePath,
     sourceFile: sourceFile,
     cacheDir: cacheDir,
-    aiModel: modelInfo
+    aiModel: modelInfo,
+    advancedOptions: advancedOptions.value
   };
 
   console.log('Processing file:', request);
@@ -238,6 +264,12 @@ onMounted(() => {
   const storedScaleRatio = sessionStorage.getItem('scaleRatio');
   const storedSelectedAiTool = sessionStorage.getItem('selectedAiTool');
   const storedIsProcessing = sessionStorage.getItem('isProcessing');
+  const storedTileSize = sessionStorage.getItem('tileSize');
+  const storedTilePad = sessionStorage.getItem('tilePad');
+  const storedPrePad = sessionStorage.getItem('prePad');
+  const storedFaceEnhance = sessionStorage.getItem('faceEnhance');
+  const storedFaceInst = sessionStorage.getItem('faceInst');
+  const storedDenoiseLevel = sessionStorage.getItem('denoiseLevel');
 
   if (storedFilePath) filePath.value = storedFilePath;
   if (storedPreviewUrl) previewUrl.value = storedPreviewUrl;
@@ -245,6 +277,12 @@ onMounted(() => {
   if (storedScaleRatio) scaleRatio.value = parseInt(storedScaleRatio);
   if (storedSelectedAiTool) selectedAiTool.value = storedSelectedAiTool;
   if (storedIsProcessing) isProcessing.value = storedIsProcessing === 'true';
+  if (storedTileSize) tileSize.value = parseInt(storedTileSize);
+  if (storedTilePad) tilePad.value = parseInt(storedTilePad);
+  if (storedPrePad) prePad.value = parseInt(storedPrePad);
+  if (storedFaceEnhance) faceEnhance.value = storedFaceEnhance === 'true';
+  if (storedFaceInst) faceInst.value = storedFaceInst;
+  if (storedDenoiseLevel) denoiseLevel.value = parseInt(storedDenoiseLevel);
 
   intervalId.value = setInterval(monitorProgress, 100);
 });
@@ -254,7 +292,8 @@ onUnmounted(() => {
 });
 </script>
 
-<style scoped>.app-container {
+<style scoped>
+.app-container {
   font-family: 'Poppins', sans-serif;
   color: #e0e0e0;
   max-height: 100vh;
@@ -297,6 +336,9 @@ main {
 .upload-area {
   width: 100%;
   max-width: 80%;
+
+  min-height: 400px;
+
   height: 400px;
   border: 3px dashed #4a4a4a;
   border-radius: 20px;
@@ -311,7 +353,6 @@ main {
 
 .upload-area:hover {
   background-color: rgba(255, 255, 255, 0.1);
-  transform: translateY(-5px);
 }
 
 .upload-prompt {
@@ -352,7 +393,7 @@ main {
   flex-direction: column;
   gap: 1.5rem;
   width: 100%;
-  max-width: 600px;
+  max-width: 800px;
 }
 
 .control-group {
@@ -501,21 +542,25 @@ select {
   width: 100%;
 }
 
-.original, .upscaled {
+.original,
+.upscaled {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.original h3, .upscaled h3 {
+.original h3,
+.upscaled h3 {
   font-size: 1.4rem;
   color: #ffffff;
   margin-bottom: 0.5rem;
 }
 
-.original img, .upscaled img,
-.original video, .upscaled video {
+.original img,
+.upscaled img,
+.original video,
+.upscaled video {
   max-width: 100%;
   max-height: 400px;
   border-radius: 10px;

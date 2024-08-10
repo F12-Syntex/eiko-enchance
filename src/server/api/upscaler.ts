@@ -8,7 +8,7 @@ import { ref } from 'vue'
 
 const progressRef = ref(0)
 
-async function upscale(event: H3Event, modelInfo: Model, scaleRatio: number, exportFilePath: string, cacheDir: string, sourceFile: string) {
+async function upscale(event: H3Event, modelInfo: Model, scaleRatio: number, exportFilePath: string, cacheDir: string, sourceFile: string, advcancedOptions: any) {
   const isImage = /\.(jpg|jpeg|png)$/i.test(sourceFile)
   const isVideo = /\.(mp4|avi|mov|mkv|vlc)$/i.test(sourceFile)
 
@@ -188,7 +188,7 @@ export default defineEventHandler(async (event) => {
   const methodMap: { [key: string]: Function } = {
     upscale: async () => {
       const body = await readBody(event)
-      return upscale(event, body.aiModel, body.scaleRatio, body.exportFilePath, body.cacheDir, body.sourceFile)
+      return upscale(event, body.aiModel, body.scaleRatio, body.exportFilePath, body.cacheDir, body.sourceFile, body.advancedOptions)
     },
     getProgress: getProgress
   }

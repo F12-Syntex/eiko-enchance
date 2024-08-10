@@ -2,7 +2,8 @@
 import type { DefineComponent, SlotsType } from 'vue'
 type IslandComponent<T extends DefineComponent> = T & DefineComponent<{}, {refresh: () => Promise<void>}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, SlotsType<{ fallback: { error: unknown } }>>
 interface _GlobalComponents {
-      'SideBar': typeof import("../src/components/SideBar.vue")['default']
+      'AdvancedOptions': typeof import("../src/components/AdvancedOptions.vue")['default']
+    'SideBar': typeof import("../src/components/SideBar.vue")['default']
     'UploadForm': typeof import("../src/components/UploadForm.vue")['default']
     'NuxtWelcome': typeof import("../node_modules/nuxt/dist/app/components/welcome")['default']
     'NuxtLayout': typeof import("../node_modules/nuxt/dist/app/components/nuxt-layout")['default']
@@ -28,7 +29,8 @@ interface _GlobalComponents {
     'Body': typeof import("../node_modules/nuxt/dist/head/runtime/components")['Body']
     'NuxtIsland': typeof import("../node_modules/nuxt/dist/app/components/nuxt-island")['default']
     'NuxtRouteAnnouncer': IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
-      'LazySideBar': typeof import("../src/components/SideBar.vue")['default']
+      'LazyAdvancedOptions': typeof import("../src/components/AdvancedOptions.vue")['default']
+    'LazySideBar': typeof import("../src/components/SideBar.vue")['default']
     'LazyUploadForm': typeof import("../src/components/UploadForm.vue")['default']
     'LazyNuxtWelcome': typeof import("../node_modules/nuxt/dist/app/components/welcome")['default']
     'LazyNuxtLayout': typeof import("../node_modules/nuxt/dist/app/components/nuxt-layout")['default']
@@ -68,6 +70,7 @@ declare module 'vue' {
   export interface GlobalComponents extends _GlobalComponents { }
 }
 
+export const AdvancedOptions: typeof import("../src/components/AdvancedOptions.vue")['default']
 export const SideBar: typeof import("../src/components/SideBar.vue")['default']
 export const UploadForm: typeof import("../src/components/UploadForm.vue")['default']
 export const NuxtWelcome: typeof import("../node_modules/nuxt/dist/app/components/welcome")['default']
@@ -94,6 +97,7 @@ export const Html: typeof import("../node_modules/nuxt/dist/head/runtime/compone
 export const Body: typeof import("../node_modules/nuxt/dist/head/runtime/components")['Body']
 export const NuxtIsland: typeof import("../node_modules/nuxt/dist/app/components/nuxt-island")['default']
 export const NuxtRouteAnnouncer: IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
+export const LazyAdvancedOptions: typeof import("../src/components/AdvancedOptions.vue")['default']
 export const LazySideBar: typeof import("../src/components/SideBar.vue")['default']
 export const LazyUploadForm: typeof import("../src/components/UploadForm.vue")['default']
 export const LazyNuxtWelcome: typeof import("../node_modules/nuxt/dist/app/components/welcome")['default']

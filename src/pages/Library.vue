@@ -31,6 +31,12 @@
                         <span>{{ item.name }}</span>
                     </div>
                 </template>
+                <template v-else-if="item.type === 'audio'">
+                    <div class="audio" @click="previewMedia(item)">
+                        <i class="fas fa-music"></i>
+                        <span>{{ item.name }}</span>
+                    </div>
+                </template>
             </div>
         </div>
         <div v-if="previewItem" class="media-preview" tabindex="0" ref="mediaPreview">
@@ -41,6 +47,10 @@
                     <source :src="previewItem.url" :type="'video/' + previewItem.name.split('.').pop()">
                     Your browser does not support the video tag.
                 </video>
+                <audio v-else-if="previewItem.type === 'audio'" controls>
+                    <source :src="previewItem.url" :type="'audio/' + getAudioType(previewItem.name)">
+                    Your browser does not support the audio tag.
+                </audio>
             </div>
             <div class="preview-navigation">
                 <button @click="navigatePreview(-1)" class="nav-button prev">
@@ -61,7 +71,6 @@
         </div>
     </div>
 </template>
-
 <script setup>
 import { ref, computed, onMounted, watch, nextTick, onUnmounted } from 'vue';
 import useElectron from '../../composables/useElectron';
@@ -114,8 +123,26 @@ const getFileType = (fileName) => {
         return 'image';
     } else if (['mp4', 'webm', 'ogg'].includes(extension)) {
         return 'video';
+    } else if (['mp3', 'wav', 'ogg', 'flac'].includes(extension)) {
+        return 'audio';
     }
     return 'other';
+};
+
+const getAudioType = (fileName) => {
+    const extension = fileName.split('.').pop().toLowerCase();
+    if (extension === 'mp3') {
+        return 'audio/mpeg';
+    } else if (extension === 'wav') {
+        return 'audio/wav';
+    } else if (extension === 'ogg') {
+        return 'audio/ogg';
+    } else if (extension === 'flac') {
+        return 'audio/flac';
+    } else if (extension === 'aac') {
+        return 'audio/aac';
+    }
+    return '';
 };
 
 const loadCurrentFolder = async () => {
@@ -137,9 +164,9 @@ const loadCurrentFolder = async () => {
                 name: file.name,
                 type,
                 url: `local-file://${absolutePath}`,
-                thumbnailUrl: type === 'video' ? '' : `local-file://${absolutePath}`
+                thumbnailUrl: type === 'video' || type === 'audio' ? '' : `local-file://${absolutePath}`
             };
-        });
+        }).filter(item => item.type === 'directory' || item.type === 'image' || item.type === 'video' || item.type === 'audio');
     };
 
     items.value = processFiles(filesObject);
@@ -207,7 +234,7 @@ const getVideoFrame = (video) => {
 };
 
 const navigatePreview = (direction) => {
-    const mediaItems = sortedItems.value.filter(item => item.type === 'image' || item.type === 'video');
+    const mediaItems = sortedItems.value.filter(item => item.type === 'image' || item.type === 'video' || item.type === 'audio');
     const currentIndex = mediaItems.findIndex(item => item.name === previewItem.value.name);
     let newIndex = currentIndex + direction;
 
@@ -249,6 +276,20 @@ watch(currentPath, async () => {
 </script>
 
 <style scoped>
+.audio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.audio i {
+    font-size: 50px;
+    margin-bottom: 10px;
+    color: #0e639c;
+}
+
 .library-container {
     width: 100%;
     height: 100vh;
