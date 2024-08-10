@@ -7,6 +7,8 @@ import titleBarActionsModule from './modules/titleBarActions'
 import explorer from './modules/explorer'
 import updaterModule from './modules/updater'
 import macMenuModule from './modules/macMenu'
+import appController from './modules/appController'
+import { application } from 'express'
 
 // Initilize
 // =========
@@ -15,7 +17,7 @@ const isProduction = process.env.NODE_ENV !== 'development'
 const platform: 'darwin' | 'win32' | 'linux' = process.platform as any
 const architucture: '64' | '32' = os.arch() === 'x64' ? '64' : '32'
 const headerSize = 32
-const modules = [titleBarActionsModule, macMenuModule, updaterModule, explorer]
+const modules = [titleBarActionsModule, macMenuModule, updaterModule, explorer, appController]
 
 // Initialize app window
 // =====================

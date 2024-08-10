@@ -107,19 +107,18 @@ async function processImage() {
   const cacheDir = settings.getSettings().cacheDirectory;
   const sourceFile = filePath.value;
   const extention = sourceFile.split('.').pop();
-  //.also add a random number to the output file name
-  const outputFileName = sourceFile.split('/').pop().split('.').slice(0, -1).join('.') + "_" + Math.floor(Math.random() * 1000) + "." + extention;
 
   const request = {
     scaleRatio: scaleRatio.value,
     exportFilePath: exportFilePath,
     sourceFile: sourceFile,
     cacheDir: cacheDir,
-    aiModel: modelInfo,
-    outputFile: outputFileName
+    aiModel: modelInfo
   };
 
   console.log('Processing file:', request);
+
+  await monitorProgress();
 
   // Process the image using the selected AI model
   try {
@@ -134,15 +133,95 @@ async function processImage() {
 
     const result = await response.json();
 
+    const resultFilePath = result.filePath;
+    console.log('Result file path:', resultFilePath);
+
     if (result.error) {
       console.error('Upscaling failed:', result.error);
     } else {
-      console.log('Upscaling completed:', result.message);
+      console.log('Upscaling completed:', result.filePath);
     }
   } catch (error) {
     console.error('Error calling upscaler API:', error);
   }
 
+}
+
+async function monitorProgress() {
+  let isStarted = false;
+  let lastProgress = -1;
+  let lastCheckTime = 0;
+  const POLLING_INTERVAL = 500; // Check every 500ms
+
+  const checkProgress = async () => {
+    try {
+      const { progress } = await getProgress();
+      console.log('Progress:', progress);
+
+      if (progress > 0) {
+        isStarted = true;
+      }
+
+      if (isStarted && progress === 0 && lastProgress > 0) {
+        // Progress reset to 0, indicating completion
+        console.log('Process completed (reset to 0)');
+        return;
+      }
+
+      if (progress >= 100) {
+        // Progress reached 100%
+        console.log('Process completed (100%)');
+        return;
+      }
+
+      lastProgress = progress;
+
+      // Schedule next check
+      requestAnimationFrame(scheduleNextCheck);
+    } catch (error) {
+      console.error('Error checking progress:', error);
+      // You might want to implement some error handling here
+      // For now, we'll just stop checking
+    }
+  };
+
+  const scheduleNextCheck = () => {
+    const currentTime = Date.now();
+    if (currentTime - lastCheckTime >= POLLING_INTERVAL) {
+      lastCheckTime = currentTime;
+      checkProgress();
+    } else {
+      requestAnimationFrame(scheduleNextCheck);
+    }
+  };
+
+  // Start checking progress
+  lastCheckTime = Date.now();
+  checkProgress();
+}
+
+async function getProgress() {
+  try {
+    const response = await fetch('/api/upscaler', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Method-Name': 'getProgress'
+      }
+    });
+
+    const rawText = await response.text();
+
+    try {
+      const progressResult = JSON.parse(rawText);
+      return progressResult;
+    } catch (parseError) {
+      throw new Error('Invalid JSON response: ' + parseError.message);
+    }
+  } catch (fetchError) {
+    console.error('Error fetching progress:', fetchError);
+    throw fetchError;
+  }
 }
 
 

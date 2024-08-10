@@ -12,6 +12,7 @@ import { pipeline } from 'stream/promises';
 import extractZip from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/extract-zip/index.js';
 import { exec } from 'child_process';
 import * as os from 'os';
+import { isVNode, ref, version, unref } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/vue/index.mjs';
 import { getRequestDependencies, getPreloadLinks, getPrefetchLinks, createRenderer } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/vue-bundle-renderer/dist/runtime.mjs';
 import { stringify, uneval } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/devalue/index.js';
 import destr from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/destr/dist/index.mjs';
@@ -31,7 +32,6 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { consola } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/consola/dist/index.mjs';
 import { getContext } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/unctx/dist/index.mjs';
 import { captureRawStackTrace, parseRawStackTrace } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/errx/dist/index.js';
-import { isVNode, version, unref } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/vue/index.mjs';
 import { createServerHead as createServerHead$1, CapoPlugin } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/unhead/dist/index.mjs';
 import { defineHeadPlugin } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/@unhead/shared/dist/index.mjs';
 
@@ -1273,13 +1273,53 @@ const aiModels$1 = /*#__PURE__*/Object.freeze({
   installModel: installModel
 });
 
+const progressRef = ref(0);
+async function upscale(event, modelInfo, scaleRatio, exportFilePath, cacheDir, sourceFile) {
+  const documentsPath = path.join(os.homedir(), "Documents");
+  const models = path.join(documentsPath, "eiko", "models");
+  const executable = path.join(models, modelInfo.execusionScriptPath);
+  if (sourceFile.endsWith(".jpg") || sourceFile.endsWith(".jpeg") || sourceFile.endsWith(".png")) {
+    const modelName = modelInfo.name.split(".bin")[0];
+    const fileName = path.basename(sourceFile);
+    const outputFile = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1e3)}_${fileName}`);
+    let command = `${executable} -i ${sourceFile} -o ${outputFile} -n ${modelName}`;
+    if (scaleRatio > 1 && scaleRatio < 5) {
+      command += ` -s ${scaleRatio}`;
+    }
+    return new Promise((resolve, reject) => {
+      var _a;
+      const upscaleProcess = exec(command);
+      (_a = upscaleProcess.stderr) == null ? void 0 : _a.on("data", (data) => {
+        if (data.includes("%")) {
+          const progress = data.split("%")[0].trim();
+          console.log(`progress: ${progress}`);
+          progressRef.value = parseFloat(progress);
+        }
+      });
+      upscaleProcess.on("close", (code) => {
+        console.log(`close >> child process exited with code ${code}`);
+        progressRef.value = 0;
+        if (code === 0) {
+          resolve({ filePath: outputFile });
+        } else {
+          reject(new Error(`Upscale process exited with code ${code}`));
+        }
+      });
+      upscaleProcess.on("error", (error) => {
+        reject(error);
+      });
+    });
+  }
+  return { message: "C:/Users/username/Documents/eiko/models" };
+}
 const upscaler = defineEventHandler(async (event) => {
   const methodName = event.node.req.headers["x-method-name"];
   const methodMap = {
     upscale: async () => {
       const body = await readBody(event);
-      return upscale(body.aiModel, body.scaleRatio, body.exportFilePath, body.cacheDir, body.sourceFile, body.outputFile);
-    }
+      return upscale(event, body.aiModel, body.scaleRatio, body.exportFilePath, body.cacheDir, body.sourceFile);
+    },
+    getProgress
   };
   if (methodName && methodName in methodMap) {
     return await methodMap[methodName]();
@@ -1287,25 +1327,11 @@ const upscaler = defineEventHandler(async (event) => {
     return { error: "Unsupported method" };
   }
 });
-async function upscale(modelInfo, scaleRatio, exportFilePath, cacheDir, sourceFile, outputFile) {
-  const documentsPath = path.join(os.homedir(), "Documents");
-  const models = path.join(documentsPath, "eiko", "models");
-  const executable = path.join(models, modelInfo.execusionScriptPath);
-  if (sourceFile.endsWith(".jpg") || sourceFile.endsWith(".jpeg") || sourceFile.endsWith(".png")) {
-    const name = modelInfo.name.split(".bin")[0];
-    console.log("outputFile", outputFile);
-    const command = `${executable} -i ${sourceFile} -o ${outputFile} -n ${name} -s ${scaleRatio}`;
-    console.log(command);
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`exec error: ${error}`);
-        return { error: error.message };
-      }
-      console.log(`stdout: ${stdout}`);
-      console.error(`stderr: ${stderr}`);
-    });
-  }
-  return { message: "C:/Users/username/Documents/eiko/models" };
+async function getProgress() {
+  const currentProgress = progressRef.value ? progressRef.value : 0;
+  console.log(`currentProgress: ${currentProgress}`);
+  const jsonResult = { progress: currentProgress };
+  return jsonResult;
 }
 
 const upscaler$1 = /*#__PURE__*/Object.freeze({
