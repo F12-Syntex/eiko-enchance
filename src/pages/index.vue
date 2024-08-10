@@ -30,8 +30,8 @@
         <div class="ai-model-control">
           <label for="ai-model">AI Model</label>
           <select id="ai-model" v-model="selectedAiTool">
-            <option value="">Select an AI model</option>
-            <option v-for="model in availableModels" :key="model.id" :value="model.id">{{ model.name }}</option>
+            <option value="" disabled selected>Select an AI model</option>
+            <option v-for="model in availableModels" :key="model.name" :value="model.name">{{ model.name }}</option>
           </select>
         </div>
         <button class="process-button" @click="processImage" :disabled="!canProcess">
@@ -66,6 +66,9 @@ async function loadModels() {
   let { models } = await aiModels.getInstalledModels();
   availableModels.value = models.filter((model) => model.usable && model.installed);
   console.log('Available Models:', availableModels.value);
+
+  //set the default model to the last one
+  selectedAiTool.value = availableModels.value[availableModels.value.length - 1].name;
 }
 
 loadModels();
