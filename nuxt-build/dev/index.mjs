@@ -1318,11 +1318,13 @@ function upscaleVideo(modelInfo, scaleRatio, exportFilePath, cacheDir, sourceFil
   }
   const fileName = path.basename(sourceFile).split(".")[0];
   const outputDir = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1e3)}_${fileName}_frames`);
+  const audioPath = path.join(exportFilePath, `${fileName}_audio.aac`);
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir);
   }
   const extractFramesCmd = `${ffmpegPath} -i "${sourceFile}" "${outputDir}\\%04d.png"`;
-  return upscaleVideoScript(extractFramesCmd).then(() => {
+  const extractAudioCmd = `${ffmpegPath} -i "${sourceFile}" -vn -acodec copy "${audioPath}"`;
+  return Promise.all([upscaleVideoScript(extractFramesCmd), upscaleVideoScript(extractAudioCmd)]).then(() => {
     const totalFrames = getTotalFrames(outputDir);
     console.log(`Total frames: ${totalFrames}`);
     const upscaledFramesDir = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1e3)}_${fileName}_upscaled`);
@@ -1331,9 +1333,13 @@ function upscaleVideo(modelInfo, scaleRatio, exportFilePath, cacheDir, sourceFil
     }
     return upscaleVideoFrames(outputDir, modelInfo, scaleRatio, upscaledFramesDir, cacheDir, totalFrames).then(() => {
       const outputVideoPath = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1e3)}_${fileName}_upscaled.mp4`);
-      return createVideoFromFrames(ffmpegPath, upscaledFramesDir, outputVideoPath, 30);
+      return createVideoFromFramesWithAudio(ffmpegPath, upscaledFramesDir, audioPath, outputVideoPath, 30);
     });
   });
+}
+function createVideoFromFramesWithAudio(ffmpegPath, outputDir, audioPath, exportFilePath, frameRate) {
+  const command = `${ffmpegPath} -framerate ${frameRate} -i ${outputDir}\\%04d.png -i "${audioPath}" -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -threads 0 -stats -progress pipe:1 ${exportFilePath}`;
+  return executeCommand(command, exportFilePath);
 }
 function getTotalFrames(dir) {
   const files = fs.readdirSync(dir);
@@ -1385,10 +1391,6 @@ function executeCommand(command, outputFile) {
       reject(error);
     });
   });
-}
-function createVideoFromFrames(ffmpegPath, outputDir, exportFilePath, frameRate) {
-  const command = `${ffmpegPath} -framerate ${frameRate} -i ${outputDir}\\%04d.png -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -threads 0 -stats -progress pipe:1 ${exportFilePath}`;
-  return executeCommand(command, exportFilePath);
 }
 function upscaleVideoFrames(outputDir, modelInfo, scaleRatio, exportFilePath, cacheDir, totalFrames) {
   const modelName = modelInfo.name.split(".bin")[0];
