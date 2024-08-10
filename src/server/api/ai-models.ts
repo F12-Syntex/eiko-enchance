@@ -7,7 +7,7 @@ import { createWriteStream } from 'fs'
 import { pipeline } from 'stream/promises'
 import extractZip from 'extract-zip'
 
-const REALESRGAN_SCRIPT = 'realesrgan-ncnn/realesrgan-ncnn-vulkan.exe'
+const REALESRGAN_SCRIPT = path.join('realesrgan-ncnn', 'realesrgan-ncnn-vulkan.exe')
 const modelsCache: Model[] = [
   new Model(
     'realesrgan-ncnn',

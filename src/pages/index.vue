@@ -103,17 +103,20 @@ async function processImage() {
   const exportFilePath = settings.getSettings().upscalerDirectory;
   const cacheDir = settings.getSettings().cacheDirectory;
   const sourceFile = filePath.value;
+  const extention = sourceFile.split('.').pop();
+  //.also add a random number to the output file name
+  const outputFileName = sourceFile.split('/').pop().split('.').slice(0, -1).join('.') + "_" + Math.floor(Math.random() * 1000) + "." + extention;
 
   const request = {
     scaleRatio: scaleRatio.value,
-    aiModel: modelInfo,
-    filePath: exportFilePath.value,
     exportFilePath: exportFilePath,
+    sourceFile: sourceFile,
     cacheDir: cacheDir,
-    sourceFile: sourceFile
+    aiModel: modelInfo,
+    outputFile: outputFileName
   };
 
-  console.log('Processing Image:', request);
+  console.log('Processing file:', request);
 
   // Process the image using the selected AI model
   try {
@@ -121,7 +124,7 @@ async function processImage() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Method-Name': 'upscaleImage'
+        'X-Method-Name': 'upscale'
       },
       body: JSON.stringify(request)
     });

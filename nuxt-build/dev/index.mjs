@@ -5,10 +5,13 @@ import { mkdirSync } from 'node:fs';
 import { parentPort, threadId } from 'node:worker_threads';
 import { defineEventHandler, handleCacheHeaders, splitCookiesString, isEvent, createEvent, fetchWithEvent, getRequestHeader, eventHandler, setHeaders, sendRedirect, proxyRequest, createError, setResponseHeader, send, getResponseStatus, setResponseStatus, setResponseHeaders, getRequestHeaders, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, getQuery as getQuery$1, readBody, getResponseStatusText } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/h3/dist/index.mjs';
 import { promises, createWriteStream } from 'fs';
-import path from 'path';
+import * as path from 'path';
+import path__default from 'path';
 import axios from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/axios/index.js';
 import { pipeline } from 'stream/promises';
 import extractZip from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/extract-zip/index.js';
+import { exec } from 'child_process';
+import * as os from 'os';
 import { getRequestDependencies, getPreloadLinks, getPrefetchLinks, createRenderer } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/vue-bundle-renderer/dist/runtime.mjs';
 import { stringify, uneval } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/devalue/index.js';
 import destr from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/destr/dist/index.mjs';
@@ -1139,7 +1142,7 @@ class Model {
   }
 }
 
-const REALESRGAN_SCRIPT = "realesrgan-ncnn/realesrgan-ncnn-vulkan.exe";
+const REALESRGAN_SCRIPT = path__default.join("realesrgan-ncnn", "realesrgan-ncnn-vulkan.exe");
 const modelsCache = [
   new Model(
     "realesrgan-ncnn",
@@ -1160,7 +1163,7 @@ const modelsCache = [
   new Model("realesrgan-anime-video.bin", "A RealESRGAN model trained on anime images for video upscaling.", "", 0, false, false, true, REALESRGAN_SCRIPT, "realesrgan-ncnn/models/realesrgan-anime-video.bin")
 ];
 const aiModels = defineEventHandler(async (event) => {
-  const modelsPath = path.join(process.env.HOME || process.env.USERPROFILE || "", "Documents", "eiko", "models");
+  const modelsPath = path__default.join(process.env.HOME || process.env.USERPROFILE || "", "Documents", "eiko", "models");
   try {
     await promises.access(modelsPath);
   } catch {
@@ -1193,8 +1196,8 @@ async function getInstalledModels(modelsPath) {
       if (dirent.isDirectory()) {
         const file = dirent.name;
         if (file === "realesrgan-ncnn") {
-          const realEsrganFolder = path.join(modelsPath, file);
-          const realEsrganModelsFolder = path.join(realEsrganFolder, "models");
+          const realEsrganFolder = path__default.join(modelsPath, file);
+          const realEsrganModelsFolder = path__default.join(realEsrganFolder, "models");
           const realEsrganModels = await promises.readdir(realEsrganModelsFolder, { withFileTypes: true });
           installedModels.push(file);
           for (const realEsrganDirent of realEsrganModels) {
@@ -1234,10 +1237,10 @@ async function installModel(model, modelsPath) {
         console.log(`Download progress: ${percentCompleted}%`);
       }
     });
-    const zipFilePath = path.join(modelsPath, `${model.name}.zip`);
+    const zipFilePath = path__default.join(modelsPath, `${model.name}.zip`);
     const writer = createWriteStream(zipFilePath);
     await pipeline(response.data, writer);
-    const extractPath = path.join(modelsPath, model.name);
+    const extractPath = path__default.join(modelsPath, model.name);
     await extractZip(zipFilePath, { dir: extractPath });
     await promises.unlink(zipFilePath);
     console.log(`Model ${model.name} installed successfully.`);
@@ -1248,7 +1251,7 @@ async function installModel(model, modelsPath) {
   }
 }
 async function deleteModel(model) {
-  const modelPath = path.join(process.env.HOME || process.env.USERPROFILE || "", "Documents", "eiko", "models", model.name);
+  const modelPath = path__default.join(process.env.HOME || process.env.USERPROFILE || "", "Documents", "eiko", "models", model.name);
   try {
     await promises.rmdir(
       modelPath,
@@ -1273,7 +1276,10 @@ const aiModels$1 = /*#__PURE__*/Object.freeze({
 const upscaler = defineEventHandler(async (event) => {
   const methodName = event.node.req.headers["x-method-name"];
   const methodMap = {
-    upscaleImage
+    upscale: async () => {
+      const body = await readBody(event);
+      return upscale(body.aiModel, body.scaleRatio, body.exportFilePath, body.cacheDir, body.sourceFile, body.outputFile);
+    }
   };
   if (methodName && methodName in methodMap) {
     return await methodMap[methodName]();
@@ -1281,7 +1287,24 @@ const upscaler = defineEventHandler(async (event) => {
     return { error: "Unsupported method" };
   }
 });
-async function upscaleImage() {
+async function upscale(modelInfo, scaleRatio, exportFilePath, cacheDir, sourceFile, outputFile) {
+  const documentsPath = path.join(os.homedir(), "Documents");
+  const models = path.join(documentsPath, "eiko", "models");
+  const executable = path.join(models, modelInfo.execusionScriptPath);
+  if (sourceFile.endsWith(".jpg") || sourceFile.endsWith(".jpeg") || sourceFile.endsWith(".png")) {
+    const name = modelInfo.name.split(".bin")[0];
+    console.log("outputFile", outputFile);
+    const command = `${executable} -i ${sourceFile} -o ${outputFile} -n ${name} -s ${scaleRatio}`;
+    console.log(command);
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`exec error: ${error}`);
+        return { error: error.message };
+      }
+      console.log(`stdout: ${stdout}`);
+      console.error(`stderr: ${stderr}`);
+    });
+  }
   return { message: "C:/Users/username/Documents/eiko/models" };
 }
 
