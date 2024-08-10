@@ -50,6 +50,18 @@ export default function useElectron() {
         console.error('Error opening folder dialog:', error)
         throw error // Re-throw the error so the caller can handle it
       }
+    },
+    exploreFolder: async (path: string) => {
+      try {
+        if (!electron.ipcRenderer.invoke) {
+          throw new Error('ipcRenderer.invoke is not available. Make sure you are using a recent version of Electron.')
+        }
+        const result = await electron.ipcRenderer.invoke('dialog:getFiles', path)
+        return result
+      } catch (error) {
+        console.error('Error exploring folder:', error)
+        throw error // Re-throw the error so the caller can handle it
+      }
     }
   }
 

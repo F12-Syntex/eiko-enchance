@@ -1,4 +1,6 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
+import fs from 'fs'
+import paths from 'path'
 
 // Helpers
 // =======
@@ -41,6 +43,15 @@ export default (mainWindow: BrowserWindow) => {
 
     const result = await dialog.showOpenDialog(win, { ...options, properties: ['openDirectory'] })
     return result
+  })
+
+  ipcMain.handle('dialog:getFiles', async (event, path: string) => {
+    //get all the absulute paths of the files in the folder
+    const files = fs.readdirSync(path).map(file => {
+      return paths.join(path, file)
+    });
+
+    return files
   })
 
   console.log('[-] MODULE::explorer Initialized')
