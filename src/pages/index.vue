@@ -34,8 +34,12 @@
             <option v-for="model in availableModels" :key="model.name" :value="model.name">{{ model.name }}</option>
           </select>
         </div>
-        <button class="process-button" @click="processImage" :disabled="!canProcess">
-          <span>Process</span>
+        <div v-if="isProcessing" class="progress-bar">
+          <div class="progress" :style="{ width: `${progress}%` }"></div>
+          <span class="progress-text">{{ progress }}%</span>
+        </div>
+        <button class="process-button" @click="processImage" :disabled="!canProcess || isProcessing">
+          <span>{{ isProcessing ? 'Processing...' : 'Process' }}</span>
           <i class="fas fa-arrow-right"></i>
         </button>
       </div>
@@ -54,13 +58,12 @@ const fileType = ref('');
 const scaleRatio = ref(1);
 const selectedAiTool = ref('');
 const filePath = ref('');
+const isProcessing = ref(false);
+const progress = ref(0);
 
 const availableModels = ref([]);
 
 let canProcess = computed(() => selectedAiTool.value != '' && previewUrl.value != '');
-// let canProcess = true;
-// let canProcess = computed(() => selectedAiTool.value !== '');
-
 
 async function loadModels() {
   let { models } = await aiModels.getInstalledModels();
@@ -96,11 +99,10 @@ function handleFileDrop(event) {
 }
 
 async function processImage() {
-  // Get the selected AI model from the 'ai-model' select element
+  isProcessing.value = true;
+  progress.value = 0;
+
   const model = document.getElementById('ai-model').value;
-
-  //get the model information from the name
-
   const modelInfo = await aiModels.getModelFromName(model);
 
   const exportFilePath = settings.getSettings().upscalerDirectory;
@@ -120,7 +122,6 @@ async function processImage() {
 
   await monitorProgress();
 
-  // Process the image using the selected AI model
   try {
     const response = await fetch('/api/upscaler', {
       method: 'POST',
@@ -143,45 +144,41 @@ async function processImage() {
     }
   } catch (error) {
     console.error('Error calling upscaler API:', error);
+  } finally {
+    isProcessing.value = false;
   }
-
 }
 
 async function monitorProgress() {
   let isStarted = false;
   let lastProgress = -1;
   let lastCheckTime = 0;
-  const POLLING_INTERVAL = 500; // Check every 500ms
+  const POLLING_INTERVAL = 100;
 
   const checkProgress = async () => {
     try {
-      const { progress } = await getProgress();
-      console.log('Progress:', progress);
+      const { progress: currentProgress } = await getProgress();
+      console.log('Progress:', currentProgress);
+      progress.value = currentProgress;
 
-      if (progress > 0) {
+      if (currentProgress > 0) {
         isStarted = true;
       }
 
-      if (isStarted && progress === 0 && lastProgress > 0) {
-        // Progress reset to 0, indicating completion
+      if (isStarted && currentProgress === 0 && lastProgress > 0) {
         console.log('Process completed (reset to 0)');
         return;
       }
 
-      if (progress >= 100) {
-        // Progress reached 100%
+      if (currentProgress >= 100) {
         console.log('Process completed (100%)');
         return;
       }
 
-      lastProgress = progress;
-
-      // Schedule next check
+      lastProgress = currentProgress;
       requestAnimationFrame(scheduleNextCheck);
     } catch (error) {
       console.error('Error checking progress:', error);
-      // You might want to implement some error handling here
-      // For now, we'll just stop checking
     }
   };
 
@@ -195,7 +192,6 @@ async function monitorProgress() {
     }
   };
 
-  // Start checking progress
   lastCheckTime = Date.now();
   checkProgress();
 }
@@ -224,12 +220,63 @@ async function getProgress() {
   }
 }
 
-
 </script>
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css');
+
+.progress-bar {
+  width: 100%;
+  height: 20px;
+  background-color: #2a2a2a;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress {
+  height: 100%;
+  background-color: #4CAF50;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.process-button {
+  background-color: #3a3a3a;
+  color: #ffffff;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.process-button:hover:not(:disabled) {
+  background-color: #4a4a4a;
+  transform: translateY(-2px);
+}
+
+.process-button:disabled {
+  background-color: #2a2a2a;
+  color: #808080;
+  cursor: not-allowed;
+}
 
 .app-container {
   font-family: 'Poppins', sans-serif;
