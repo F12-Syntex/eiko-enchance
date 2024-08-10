@@ -1287,147 +1287,134 @@ const aiModels$1 = /*#__PURE__*/Object.freeze({
 
 const progressRef = ref(0);
 async function upscale(event, modelInfo, scaleRatio, exportFilePath, cacheDir, sourceFile) {
-  const documentsPath = path.join(os.homedir(), "Documents");
-  const models = path.join(documentsPath, "eiko", "models");
-  const executable = path.join(models, modelInfo.execusionScriptPath);
-  if (sourceFile.endsWith(".jpg") || sourceFile.endsWith(".jpeg") || sourceFile.endsWith(".png")) {
-    const modelName = modelInfo.name.split(".bin")[0];
-    const fileName = path.basename(sourceFile);
-    const outputFile = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1e3)}_${fileName}`);
-    let command = `${executable} -i ${sourceFile} -o ${outputFile} -n ${modelName}`;
-    if (scaleRatio > 1 && scaleRatio < 5) {
-      command += ` -s ${scaleRatio}`;
-    }
-    return new Promise((resolve, reject) => {
-      var _a;
-      const upscaleProcess = exec(command);
-      (_a = upscaleProcess.stderr) == null ? void 0 : _a.on("data", (data) => {
-        if (data.includes("%")) {
-          const progress = data.split("%")[0].trim();
-          console.log(`progress: ${progress}`);
-          progressRef.value = parseFloat(progress);
-        }
-      });
-      upscaleProcess.on("close", (code) => {
-        console.log(`close >> child process exited with code ${code}`);
-        progressRef.value = 0;
-        if (code === 0) {
-          resolve({ filePath: outputFile });
-        } else {
-          reject(new Error(`Upscale process exited with code ${code}`));
-        }
-      });
-      upscaleProcess.on("error", (error) => {
-        reject(error);
-      });
-    });
-  } else if (sourceFile.endsWith(".mp4") || sourceFile.endsWith(".avi") || sourceFile.endsWith(".mov") || sourceFile.endsWith(".mkv") || sourceFile.endsWith(".vlc")) {
-    console.log("Upscaling video");
-    const modelsPath = path.join(process.env.HOME || process.env.USERPROFILE || "", "Documents", "eiko", "models");
-    let ffmpegPath = "";
-    const searchForFFmpeg = (dir) => {
-      fs.readdirSync(dir).forEach((file) => {
-        const filePath = path.join(dir, file);
-        if (fs.lstatSync(filePath).isDirectory()) {
-          searchForFFmpeg(filePath);
-        }
-        if (file === "ffmpeg.exe") {
-          ffmpegPath = filePath;
-        }
-      });
-    };
-    searchForFFmpeg(modelsPath);
-    if (!ffmpegPath || ffmpegPath === "") {
-      return { error: "FFmpeg not found in models directory" };
-    }
-    modelInfo.name.split(".bin")[0];
-    const fileName = path.basename(sourceFile);
-    const outputDir = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1e3)}_${fileName.split(".")[0]}_frames`);
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir);
-    }
-    const command = `${ffmpegPath} -i "${sourceFile}" "${outputDir}\\%04d.png"`;
-    console.log(`command: ${command}`);
-    const fps = 30;
-    return new Promise((resolve, reject) => {
-      var _a;
-      const upscaleProcess = exec(command);
-      (_a = upscaleProcess.stderr) == null ? void 0 : _a.on("data", (data) => {
-        console.log(data);
-      });
-      upscaleProcess.on("close", (code) => {
-        console.log(`close >> child process exited with code ${code}`);
-        if (code === 0) {
-          const outputPathForUpscaledFrames = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1e3)}_${fileName.split(".")[0]}_upscaled`);
-          if (!fs.existsSync(outputPathForUpscaledFrames)) {
-            fs.mkdirSync(outputPathForUpscaledFrames);
-          }
-          upscaleVideoFromFolder(outputDir, modelInfo, scaleRatio, outputPathForUpscaledFrames).then((result) => {
-            const newExportPath = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1e3)}_${fileName.split(".")[0]}_upscaled.mp4`);
-            createVideoFromFrames(ffmpegPath, outputPathForUpscaledFrames, newExportPath, fps).then((result2) => {
-              resolve(result2);
-            }).catch((error) => {
-              reject(error);
-            });
-          }).catch((error) => {
-            reject(error);
-          });
-        } else {
-          reject(new Error(`Upscale process exited with code ${code}`));
-        }
-      });
-      upscaleProcess.on("error", (error) => {
-        reject(error);
-      });
-    });
+  const isImage = /\.(jpg|jpeg|png)$/i.test(sourceFile);
+  const isVideo = /\.(mp4|avi|mov|mkv|vlc)$/i.test(sourceFile);
+  if (isImage) {
+    return upscaleImage(modelInfo, scaleRatio, exportFilePath, sourceFile);
+  } else if (isVideo) {
+    return upscaleVideo(modelInfo, scaleRatio, exportFilePath, cacheDir, sourceFile);
   }
-  return { message: "C:/Users/username/Documents/eiko/models" };
+  return { message: "Unsupported file type" };
 }
-function createVideoFromFrames(ffmpegPath, outputDir, exportFilePath, frameRate) {
-  const command = `${ffmpegPath} -framerate ${frameRate} -i ${outputDir}\\%04d.png -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -threads 0 -stats -progress pipe:1 ${exportFilePath}`;
-  return new Promise((resolve, reject) => {
-    var _a;
-    const upscaleProcess = exec(command);
-    (_a = upscaleProcess.stderr) == null ? void 0 : _a.on("data", (data) => {
-      console.log(data);
+function upscaleImage(modelInfo, scaleRatio, exportFilePath, sourceFile) {
+  const documentsPath = path.join(os.homedir(), "Documents");
+  const modelsDir = path.join(documentsPath, "eiko", "models");
+  const executable = path.join(modelsDir, modelInfo.execusionScriptPath);
+  const modelName = modelInfo.name.split(".bin")[0];
+  const fileName = path.basename(sourceFile);
+  const outputFile = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1e3)}_${fileName}`);
+  let command = `${executable} -i ${sourceFile} -o ${outputFile} -n ${modelName}`;
+  if (scaleRatio > 1 && scaleRatio < 5) {
+    command += ` -s ${scaleRatio}`;
+  }
+  return executeCommand(command, outputFile);
+}
+function upscaleVideo(modelInfo, scaleRatio, exportFilePath, cacheDir, sourceFile) {
+  console.log("Upscaling video");
+  const modelsPath = path.join(os.homedir(), "Documents", "eiko", "models");
+  const ffmpegPath = findExecutable(modelsPath, "ffmpeg.exe");
+  if (!ffmpegPath) {
+    return { error: "FFmpeg not found in models directory" };
+  }
+  const fileName = path.basename(sourceFile).split(".")[0];
+  const outputDir = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1e3)}_${fileName}_frames`);
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir);
+  }
+  const extractFramesCmd = `${ffmpegPath} -i "${sourceFile}" "${outputDir}\\%04d.png"`;
+  return upscaleVideoScript(extractFramesCmd).then(() => {
+    const totalFrames = getTotalFrames(outputDir);
+    console.log(`Total frames: ${totalFrames}`);
+    const upscaledFramesDir = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1e3)}_${fileName}_upscaled`);
+    if (!fs.existsSync(upscaledFramesDir)) {
+      fs.mkdirSync(upscaledFramesDir);
+    }
+    return upscaleVideoFrames(outputDir, modelInfo, scaleRatio, upscaledFramesDir, cacheDir, totalFrames).then(() => {
+      const outputVideoPath = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1e3)}_${fileName}_upscaled.mp4`);
+      return createVideoFromFrames(ffmpegPath, upscaledFramesDir, outputVideoPath, 30);
     });
-    upscaleProcess.on("close", (code) => {
+  });
+}
+function getTotalFrames(dir) {
+  const files = fs.readdirSync(dir);
+  return files.length;
+}
+function upscaleVideoScript(command) {
+  return new Promise((resolve, reject) => {
+    const process = exec(command);
+    process.on("close", (code) => {
       console.log(`close >> child process exited with code ${code}`);
       if (code === 0) {
-        resolve({ filePath: exportFilePath });
+        resolve({});
       } else {
-        reject(new Error(`Upscale process exited with code ${code}`));
+        reject(new Error(`Process exited with code ${code}`));
       }
     });
-    upscaleProcess.on("error", (error) => {
+    process.on("error", (error) => {
       reject(error);
     });
   });
 }
-function upscaleVideoFromFolder(outputDir, modelInfo, scaleRatio, exportFilePath, cacheDir) {
+function findExecutable(dir, executableName) {
+  let foundPath = null;
+  const searchDir = (currentDir) => {
+    fs.readdirSync(currentDir).forEach((file) => {
+      const filePath = path.join(currentDir, file);
+      if (fs.lstatSync(filePath).isDirectory()) {
+        searchDir(filePath);
+      } else if (file === executableName) {
+        foundPath = filePath;
+      }
+    });
+  };
+  searchDir(dir);
+  return foundPath;
+}
+function executeCommand(command, outputFile) {
+  return new Promise((resolve, reject) => {
+    const process = exec(command);
+    process.on("close", (code) => {
+      console.log(`close >> child process exited with code ${code}`);
+      if (code === 0) {
+        resolve(outputFile ? { filePath: outputFile } : {});
+      } else {
+        reject(new Error(`Process exited with code ${code}`));
+      }
+    });
+    process.on("error", (error) => {
+      reject(error);
+    });
+  });
+}
+function createVideoFromFrames(ffmpegPath, outputDir, exportFilePath, frameRate) {
+  const command = `${ffmpegPath} -framerate ${frameRate} -i ${outputDir}\\%04d.png -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -threads 0 -stats -progress pipe:1 ${exportFilePath}`;
+  return executeCommand(command, exportFilePath);
+}
+function upscaleVideoFrames(outputDir, modelInfo, scaleRatio, exportFilePath, cacheDir, totalFrames) {
   const modelName = modelInfo.name.split(".bin")[0];
-  const executable = path.join(process.env.HOME || process.env.USERPROFILE || "", "Documents", "eiko", "models", modelInfo.execusionScriptPath);
+  const executable = path.join(os.homedir(), "Documents", "eiko", "models", modelInfo.execusionScriptPath);
   const command = `${executable} -i ${outputDir} -o ${exportFilePath} -n ${modelName}`;
   return new Promise((resolve, reject) => {
     var _a;
-    const upscaleProcess = exec(command);
-    (_a = upscaleProcess.stderr) == null ? void 0 : _a.on("data", (data) => {
+    const process = exec(command);
+    (_a = process.stderr) == null ? void 0 : _a.on("data", (data) => {
       if (data.includes("%")) {
-        const progress = data.split("%")[0].trim();
-        console.log(`progress: ${progress}`);
-        progressRef.value = parseFloat(progress);
+        const progress = parseFloat(data.split("%")[0].trim());
+        console.log(`Frame progress: ${progress}%`);
+        const processedFrames = fs.readdirSync(exportFilePath).length;
+        progressRef.value = Math.floor((processedFrames / totalFrames + progress / 100 / totalFrames) * 100);
+        console.log(`Overall progress: ${progressRef.value.toFixed(2)}%`);
       }
     });
-    upscaleProcess.on("close", (code) => {
-      console.log(`close >> child process exited with code ${code}`);
+    process.on("close", (code) => {
       progressRef.value = 0;
       if (code === 0) {
-        resolve({ filePath: exportFilePath });
+        resolve({});
       } else {
-        reject(new Error(`Upscale process exited with code ${code}`));
+        reject(new Error(`Process exited with code ${code}`));
       }
     });
-    upscaleProcess.on("error", (error) => {
+    process.on("error", (error) => {
       reject(error);
     });
   });
@@ -1448,10 +1435,9 @@ const upscaler = defineEventHandler(async (event) => {
   }
 });
 async function getProgress() {
-  const currentProgress = progressRef.value ? progressRef.value : 0;
+  const currentProgress = progressRef.value || 0;
   console.log(`currentProgress: ${currentProgress}`);
-  const jsonResult = { progress: currentProgress };
-  return jsonResult;
+  return { progress: currentProgress };
 }
 
 const upscaler$1 = /*#__PURE__*/Object.freeze({

@@ -5,8 +5,7 @@
     </header>
     <main>
       <div class="upload-area" @dragover.prevent @drop.prevent="handleFileDrop" @click="triggerFileInput">
-        <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*, video/*"
-          style="display: none;" />
+        <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*, video/*" style="display: none;" />
         <div v-if="!previewUrl" class="upload-prompt">
           <i class="fas fa-cloud-upload-alt"></i>
           <p>Drag & Drop or Click to Upload</p>
@@ -48,7 +47,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import aiModels from '../controller/ai-models';
 import settings from '../managers/SettingsManager';
 
@@ -62,15 +61,16 @@ const isProcessing = ref(false);
 const progress = ref(0);
 
 const availableModels = ref([]);
+const intervalId = ref(null);
 
-let canProcess = computed(() => selectedAiTool.value != '' && previewUrl.value != '');
+const canProcess = computed(() => selectedAiTool.value !== '' && previewUrl.value !== '');
 
 async function loadModels() {
-  let { models } = await aiModels.getInstalledModels();
+  const { models } = await aiModels.getInstalledModels();
   availableModels.value = models.filter((model) => model.usable && model.installed);
   console.log('Available Models:', availableModels.value);
 
-  //set the default model to the last one
+  // Set the default model to the last one
   selectedAiTool.value = availableModels.value[availableModels.value.length - 1].name;
 }
 
@@ -82,21 +82,38 @@ function triggerFileInput() {
 
 function handleFileUpload(event) {
   const file = event.target.files[0];
-  filePath.value = file.path;
   if (file) {
+    filePath.value = file.path;
     previewUrl.value = URL.createObjectURL(file);
     fileType.value = file.type.startsWith('image') ? 'image' : 'video';
+
+    // Save to sessionStorage
+    sessionStorage.setItem('filePath', filePath.value);
+    sessionStorage.setItem('previewUrl', previewUrl.value);
+    sessionStorage.setItem('fileType', fileType.value);
   }
 }
 
 function handleFileDrop(event) {
   const file = event.dataTransfer.files[0];
-  filePath.value = file.path;
   if (file) {
+    filePath.value = file.path;
     previewUrl.value = URL.createObjectURL(file);
     fileType.value = file.type.startsWith('image') ? 'image' : 'video';
+
+    // Save to sessionStorage
+    sessionStorage.setItem('filePath', filePath.value);
+    sessionStorage.setItem('previewUrl', previewUrl.value);
+    sessionStorage.setItem('fileType', fileType.value);
   }
 }
+
+watch([scaleRatio, selectedAiTool, isProcessing], () => {
+  // Save to sessionStorage
+  sessionStorage.setItem('scaleRatio', scaleRatio.value);
+  sessionStorage.setItem('selectedAiTool', selectedAiTool.value);
+  sessionStorage.setItem('isProcessing', isProcessing.value);
+});
 
 async function processImage() {
   isProcessing.value = true;
@@ -108,7 +125,6 @@ async function processImage() {
   const exportFilePath = settings.getSettings().upscalerDirectory;
   const cacheDir = settings.getSettings().cacheDirectory;
   const sourceFile = filePath.value;
-  const extention = sourceFile.split('.').pop();
 
   const request = {
     scaleRatio: scaleRatio.value,
@@ -119,8 +135,6 @@ async function processImage() {
   };
 
   console.log('Processing file:', request);
-
-  await monitorProgress();
 
   try {
     const response = await fetch('/api/upscaler', {
@@ -136,12 +150,8 @@ async function processImage() {
 
     console.log('Upscaling result:', result);
 
-    const resultFilePath = result.filePath;
-    console.log('Result file path:', resultFilePath);
-
     if (result.error) {
       console.error('Upscaling failed:', result.error);
-      return;
     } else {
       console.log('Upscaling completed:', result.filePath);
     }
@@ -153,50 +163,13 @@ async function processImage() {
 }
 
 async function monitorProgress() {
-  let isStarted = false;
-  let lastProgress = -1;
-  let lastCheckTime = 0;
-  const POLLING_INTERVAL = 100;
-
-  const checkProgress = async () => {
-    try {
-      const { progress: currentProgress } = await getProgress();
-      console.log('Progress:', currentProgress);
-      progress.value = currentProgress;
-
-      // if (currentProgress > 0) {
-      //   isStarted = true;
-      // }
-
-      if (isStarted && currentProgress === 0 && lastProgress > 0) {
-        console.log('Process completed (reset to 0)');
-        return;
-      }
-
-      // if (currentProgress >= 100) {
-      //   console.log('Process completed (100%)');
-      //   return;
-      // }
-
-      lastProgress = currentProgress;
-      requestAnimationFrame(scheduleNextCheck);
-    } catch (error) {
-      console.error('Error checking progress:', error);
-    }
-  };
-
-  const scheduleNextCheck = () => {
-    const currentTime = Date.now();
-    if (currentTime - lastCheckTime >= POLLING_INTERVAL) {
-      lastCheckTime = currentTime;
-      checkProgress();
-    } else {
-      requestAnimationFrame(scheduleNextCheck);
-    }
-  };
-
-  lastCheckTime = Date.now();
-  checkProgress();
+  try {
+    const { progress: currentProgress } = await getProgress();
+    console.log('Progress:', currentProgress);
+    progress.value = currentProgress;
+  } catch (error) {
+    console.error('Error checking progress:', error);
+  }
 }
 
 async function getProgress() {
@@ -223,6 +196,27 @@ async function getProgress() {
   }
 }
 
+onMounted(() => {
+  const storedFilePath = sessionStorage.getItem('filePath');
+  const storedPreviewUrl = sessionStorage.getItem('previewUrl');
+  const storedFileType = sessionStorage.getItem('fileType');
+  const storedScaleRatio = sessionStorage.getItem('scaleRatio');
+  const storedSelectedAiTool = sessionStorage.getItem('selectedAiTool');
+  const storedIsProcessing = sessionStorage.getItem('isProcessing');
+
+  if (storedFilePath) filePath.value = storedFilePath;
+  if (storedPreviewUrl) previewUrl.value = storedPreviewUrl;
+  if (storedFileType) fileType.value = storedFileType;
+  if (storedScaleRatio) scaleRatio.value = parseInt(storedScaleRatio);
+  if (storedSelectedAiTool) selectedAiTool.value = storedSelectedAiTool;
+  if (storedIsProcessing) isProcessing.value = storedIsProcessing === 'true';
+
+  intervalId.value = setInterval(monitorProgress, 100);
+});
+
+onUnmounted(() => {
+  clearInterval(intervalId.value);
+});
 </script>
 
 <style scoped>
