@@ -1,7 +1,8 @@
 <template>
   <div class="app-container">
     <header>
-      <h1>AI Image Upscaler</h1>
+      <h1>Smart Upscaler</h1>
+      <p class="subtitle">Enhance your images and videos</p>
     </header>
     <main>
       <div class="upload-area" @dragover.prevent @drop.prevent="handleFileDrop" @click="triggerFileInput">
@@ -9,6 +10,7 @@
         <div v-if="!previewUrl" class="upload-prompt">
           <i class="fas fa-cloud-upload-alt"></i>
           <p>Drag & Drop or Click to Upload</p>
+          <p class="file-types">Supported: JPG, PNG, GIF, MP4, WebM</p>
         </div>
         <div v-else class="preview-container">
           <img v-if="fileType === 'image'" :src="previewUrl" alt="Preview" />
@@ -16,30 +18,43 @@
         </div>
       </div>
       <div class="controls">
-        <div class="scale-control">
-          <label for="scale-ratio">Upscale Factor</label>
-          <div class="scale-slider">
-            <input type="range" id="scale-ratio" min="1" max="4" step="1" v-model="scaleRatio" />
-            <div class="scale-labels">
-              <span v-for="n in 4" :key="n">{{ n }}x</span>
+        <div class="control-group">
+          <div class="scale-control">
+            <label for="scale-ratio">Upscale Factor</label>
+            <div class="scale-slider">
+              <input type="range" id="scale-ratio" min="1" max="4" step="1" v-model="scaleRatio" />
+              <div class="scale-labels">
+                <span v-for="n in 4" :key="n">{{ n }}x</span>
+              </div>
             </div>
+            <span class="scale-value">{{ scaleRatio }}x</span>
           </div>
-          <span class="scale-value">{{ scaleRatio }}x</span>
-        </div>
-        <div class="ai-model-control">
-          <label for="ai-model">AI Model</label>
-          <select id="ai-model" v-model="selectedAiTool">
-            <option value="" disabled selected>Select an AI model</option>
-            <option v-for="model in availableModels" :key="model.name" :value="model.name">{{ model.name }}</option>
-          </select>
+          <div class="ai-model-control">
+            <label for="ai-model">AI Model</label>
+            <select id="ai-model" v-model="selectedAiTool">
+              <option value="" disabled selected>Select an AI model</option>
+              <option v-for="model in availableModels" :key="model.name" :value="model.name">{{ model.name }}</option>
+            </select>
+          </div>
         </div>
         <div v-if="isProcessing" class="progress-bar">
           <div class="progress" :style="{ width: `${progress}%` }"></div>
           <span class="progress-text">{{ progress }}%</span>
         </div>
         <button class="process-button" @click="processImage" :disabled="!canProcess || isProcessing">
-          <span>{{ isProcessing ? 'Processing...' : 'Process' }}</span>
-          <i class="fas fa-arrow-right"></i>
+          <span>{{ isProcessing ? 'Processing...' : 'Upscale' }}</span>
+          <i class="fas fa-magic"></i>
+        </button>
+      </div>
+      <div v-if="processedImageUrl" class="result-section">
+        <h2>Upscaled Result</h2>
+        <div class="result-preview">
+          <img v-if="fileType === 'image'" :src="processedImageUrl" alt="Upscaled Preview" />
+          <video v-else-if="fileType === 'video'" :src="processedImageUrl" controls></video>
+        </div>
+        <button class="download-button" @click="downloadResult">
+          <i class="fas fa-download"></i>
+          Download Result
         </button>
       </div>
     </main>
@@ -54,11 +69,12 @@ import settings from '../managers/SettingsManager';
 const fileInput = ref(null);
 const previewUrl = ref('');
 const fileType = ref('');
-const scaleRatio = ref(1);
+const scaleRatio = ref(2);
 const selectedAiTool = ref('');
 const filePath = ref('');
 const isProcessing = ref(false);
 const progress = ref(0);
+const processedImageUrl = ref('');
 
 const availableModels = ref([]);
 const intervalId = ref(null);
@@ -86,6 +102,7 @@ function handleFileUpload(event) {
     filePath.value = file.path;
     previewUrl.value = URL.createObjectURL(file);
     fileType.value = file.type.startsWith('image') ? 'image' : 'video';
+    processedImageUrl.value = ''; // Reset processed image when new file is uploaded
 
     // Save to sessionStorage
     sessionStorage.setItem('filePath', filePath.value);
@@ -100,6 +117,7 @@ function handleFileDrop(event) {
     filePath.value = file.path;
     previewUrl.value = URL.createObjectURL(file);
     fileType.value = file.type.startsWith('image') ? 'image' : 'video';
+    processedImageUrl.value = ''; // Reset processed image when new file is uploaded
 
     // Save to sessionStorage
     sessionStorage.setItem('filePath', filePath.value);
@@ -154,6 +172,7 @@ async function processImage() {
       console.error('Upscaling failed:', result.error);
     } else {
       console.log('Upscaling completed:', result.filePath);
+      processedImageUrl.value = URL.createObjectURL(new Blob([result.filePath]));
     }
   } catch (error) {
     console.error('Error calling upscaler API:', error);
@@ -196,6 +215,17 @@ async function getProgress() {
   }
 }
 
+function downloadResult() {
+  if (processedImageUrl.value) {
+    const link = document.createElement('a');
+    link.href = processedImageUrl.value;
+    link.download = `upscaled_${fileType.value === 'image' ? 'image' : 'video'}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+}
+
 onMounted(() => {
   const storedFilePath = sessionStorage.getItem('filePath');
   const storedPreviewUrl = sessionStorage.getItem('previewUrl');
@@ -223,58 +253,6 @@ onUnmounted(() => {
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css');
 
-.progress-bar {
-  width: 100%;
-  height: 20px;
-  background-color: #2a2a2a;
-  border-radius: 10px;
-  overflow: hidden;
-  position: relative;
-}
-
-.progress {
-  height: 100%;
-  background-color: #4CAF50;
-  transition: width 0.3s ease;
-}
-
-.progress-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.process-button {
-  background-color: #3a3a3a;
-  color: #ffffff;
-  border: none;
-  padding: 1rem 2rem;
-  border-radius: 10px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.process-button:hover:not(:disabled) {
-  background-color: #4a4a4a;
-  transform: translateY(-2px);
-}
-
-.process-button:disabled {
-  background-color: #2a2a2a;
-  color: #808080;
-  cursor: not-allowed;
-}
-
 .app-container {
   font-family: 'Poppins', sans-serif;
   color: #e0e0e0;
@@ -293,9 +271,16 @@ header {
 }
 
 h1 {
-  font-size: 2.5rem;
+  font-size: 3rem;
   font-weight: 600;
   color: #ffffff;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.subtitle {
+  font-size: 1.2rem;
+  color: #b0b0b0;
 }
 
 main {
@@ -317,10 +302,13 @@ main {
   align-items: center;
   cursor: pointer;
   transition: all 0.3s ease;
+  background-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .upload-area:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-5px);
 }
 
 .upload-prompt {
@@ -331,6 +319,12 @@ main {
   font-size: 4rem;
   color: #808080;
   margin-bottom: 1rem;
+}
+
+.file-types {
+  font-size: 0.9rem;
+  color: #808080;
+  margin-top: 0.5rem;
 }
 
 .preview-container {
@@ -347,6 +341,7 @@ main {
   max-height: 100%;
   border-radius: 10px;
   object-fit: contain;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .controls {
@@ -357,8 +352,15 @@ main {
   max-width: 600px;
 }
 
+.control-group {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .scale-control,
 .ai-model-control {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -421,8 +423,33 @@ select {
   cursor: pointer;
 }
 
+.progress-bar {
+  width: 100%;
+  height: 20px;
+  background-color: #2a2a2a;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #8BC34A);
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
 .process-button {
-  background-color: #3a3a3a;
+  background: linear-gradient(135deg, #3a3a3a 0%, #4a4a4a 100%);
   color: #ffffff;
   border: none;
   padding: 1rem 2rem;
@@ -435,17 +462,71 @@ select {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .process-button:hover:not(:disabled) {
-  background-color: #4a4a4a;
+  background: linear-gradient(135deg, #4a4a4a 0%, #5a5a5a 100%);
   transform: translateY(-2px);
 }
 
 .process-button:disabled {
-  background-color: #2a2a2a;
+  background: #2a2a2a;
   color: #808080;
   cursor: not-allowed;
+}
+
+.result-section {
+  width: 100%;
+  max-width: 80%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.result-section h2 {
+  font-size: 1.8rem;
+  color: #ffffff;
+  margin-bottom: 1rem;
+}
+
+.result-preview {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.result-preview img,
+.result-preview video {
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 10px;
+  object-fit: contain;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.download-button {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: #ffffff;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.download-button:hover {
+  background: linear-gradient(135deg, #45a049 0%, #3d8b3d 100%);
+  transform: translateY(-2px);
 }
 
 @media (max-width: 768px) {
@@ -460,6 +541,10 @@ select {
   .upload-area {
     height: 300px;
   }
+
+  .control-group {
+    flex-direction: column;
+  }
 }
 
 @media (max-height: 800px) {
@@ -469,7 +554,7 @@ select {
 
   h1 {
     font-size: 2rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
   }
 
   .upload-area {
