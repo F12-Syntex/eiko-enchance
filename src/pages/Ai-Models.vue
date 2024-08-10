@@ -1,7 +1,7 @@
 <template>
   <div class="ai-models-container">
     <div class="ai-model-header">
-      <h1>Models</h1>
+      <h1>Dependencies</h1>
       <hr class="gradient-line" />
     </div>
     <div class="ai-model-cards">
@@ -95,7 +95,6 @@ library.add(faDownload, faTrash, faCheckCircle, faTimesCircle);
   width: 100%;
   font-family: 'Poppins', sans-serif;
   font-weight: 600;
-  text-shadow: 0 0 10px rgba(245, 0, 87, 0.5);
 }
 
 .ai-models-container {
@@ -109,7 +108,6 @@ library.add(faDownload, faTrash, faCheckCircle, faTimesCircle);
   overflow-y: scroll;
   overflow-x: hidden;
   padding: 1.5em;
-  background: linear-gradient(135deg, #1a1a1a, #0d0d0d);
   border-radius: 20px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
 }
@@ -125,13 +123,14 @@ library.add(faDownload, faTrash, faCheckCircle, faTimesCircle);
   color: #ffffff;
   padding: 25px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #222, #333);
   box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
   width: 100%;
   height: 320px;
   display: flex;
   flex-direction: column;
   transition: transform 0.3s ease-in-out;
+
+  background: rgba(255, 255, 255, 0.05 );
 }
 
 .ai-model-card-header {

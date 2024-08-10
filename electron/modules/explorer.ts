@@ -64,5 +64,9 @@ export default (mainWindow: BrowserWindow) => {
     return files
   })
 
+  ipcMain.handle('dialog:pathsJoin', async (event, path1, path2) => {
+    return paths.join(path1, path2)
+  })
+
   console.log('[-] MODULE::explorer Initialized')
 }

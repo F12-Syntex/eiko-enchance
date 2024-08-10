@@ -58,14 +58,21 @@ const previewItem = ref(null);
 const currentItems = computed(() => {
     let current = items.value;
     for (const folder of currentPath.value) {
-        current = current.find(item => item.name === folder && item.type === 'directory').contents;
+        const folderItem = current.find(item => item.name === folder && item.type === 'directory');
+        if (folderItem) {
+            current = folderItem.contents;
+        } else {
+            // Handle the case where the folder doesn't exist or is not a directory
+            current = [];
+            break;
+        }
     }
     return current;
 });
 
 const currentPathString = computed(() => {
     const basePath = SettingsManager.getSettings().upscalerDirectory;
-    return basePath + (currentPath.value.length > 0 ? '/' + currentPath.value.join('/') : '');
+    return basePath + (currentPath.value.length > 0 ? '\\' + currentPath.value.join('/') : '');
 });
 
 const openFolder = (folderName) => {
@@ -99,22 +106,40 @@ const getFileType = (fileName) => {
 const loadCurrentFolder = async () => {
     const { fileExplorer } = useElectron();
     const currentFullPath = currentPathString.value;
-    const files = await fileExplorer.exploreFolder(currentFullPath);
+    console.log(currentFullPath);
+    const filesObject = await fileExplorer.exploreFolder(currentFullPath);
 
-    items.value = files.map(file => {
-        console.log(file);
-        const type = file.isDirectory ? 'directory' : getFileType(file.name);
+    const processFiles = (files) => {
+        if (!Array.isArray(files)) {
+            files = Object.values(files);
+        }
 
-        return {
-            name: file.name,
-            type: type,
-            // url: `file://${currentFullPath}/${file.name}`,
-            url: `local-file://${file.absulutePath}`,
-            contents: file.isDirectory ? [] : undefined
-        };
-    });
+        return files.map(file => {
+            const type = file.isDirectory ? 'directory' : getFileType(file.name);
+            const absulutePath = `${currentFullPath}/${file.name}`;
+
+            if (type === 'directory') {
+                const subFiles = fileExplorer.exploreFolder(absulutePath);
+                const contents = processFiles(subFiles);
+
+                return {
+                    name: file.name,
+                    type: 'directory',
+                    url: `local-file://${absulutePath}`,
+                    contents
+                };
+            } else {
+                return {
+                    name: file.name,
+                    type,
+                    url: `local-file://${absulutePath}`
+                };
+            }
+        });
+    };
+
+    items.value = processFiles(filesObject);
 };
-
 onMounted(async () => {
     await loadCurrentFolder();
 });

@@ -20,6 +20,17 @@ const modelsCache: Model[] = [
     REALESRGAN_SCRIPT,
     ''
   ),
+  new Model(
+    'ffmpeg', 
+    'ffmpeg is a free and open-source project consisting of a large software suite of libraries and programs for handling video, audio, and other multimedia files and streams.',
+    'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip',
+    270043116,
+    false,
+    true,
+    false,
+    path.join('ffmpeg', 'ffmpeg-7.0.2-essentials_build', 'bin', 'ffmpeg.exe'),
+    ''
+  ),
 
   new Model('realesr-animevideov3-x2.bin', 'A RealSR model trained on anime images for 2x upscaling.', '', 0, false, false, true, REALESRGAN_SCRIPT, 'realesrgan-ncnn/models/realesr-animevideov3-x2.bin'),
   new Model('realesr-animevideov3-x3.bin', 'A RealSR model trained on anime images for 3x upscaling.', '', 0, false, false, true, REALESRGAN_SCRIPT, 'realesrgan-ncnn/models/realesr-animevideov3-x3.bin'),

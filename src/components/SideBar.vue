@@ -43,7 +43,7 @@
                   <line x1="12" y1="22.08" x2="12" y2="12"></line>
                 </svg>
               </span>
-              <span class="link-text">AI Models</span>
+              <span class="link-text">Dependencies</span>
             </NuxtLink>
           </li>
           <li :class="{ selected: currentPage === 'library' }">

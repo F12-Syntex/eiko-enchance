@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import { parentPort, threadId } from 'node:worker_threads';
 import { defineEventHandler, handleCacheHeaders, splitCookiesString, isEvent, createEvent, fetchWithEvent, getRequestHeader, eventHandler, setHeaders, sendRedirect, proxyRequest, createError, setResponseHeader, send, getResponseStatus, setResponseStatus, setResponseHeaders, getRequestHeaders, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, getQuery as getQuery$1, readBody, getResponseStatusText } from 'file://D:/git-repo/EikoEnhance/electron-nuxt3/eiko-enchance/node_modules/h3/dist/index.mjs';
+import * as fs from 'fs';
 import { promises, createWriteStream } from 'fs';
 import * as path from 'path';
 import path__default from 'path';
@@ -1155,6 +1156,17 @@ const modelsCache = [
     REALESRGAN_SCRIPT,
     ""
   ),
+  new Model(
+    "ffmpeg",
+    "ffmpeg is a free and open-source project consisting of a large software suite of libraries and programs for handling video, audio, and other multimedia files and streams.",
+    "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
+    270043116,
+    false,
+    true,
+    false,
+    path__default.join("ffmpeg", "ffmpeg-7.0.2-essentials_build", "bin", "ffmpeg.exe"),
+    ""
+  ),
   new Model("realesr-animevideov3-x2.bin", "A RealSR model trained on anime images for 2x upscaling.", "", 0, false, false, true, REALESRGAN_SCRIPT, "realesrgan-ncnn/models/realesr-animevideov3-x2.bin"),
   new Model("realesr-animevideov3-x3.bin", "A RealSR model trained on anime images for 3x upscaling.", "", 0, false, false, true, REALESRGAN_SCRIPT, "realesrgan-ncnn/models/realesr-animevideov3-x3.bin"),
   new Model("realesr-animevideov3-x4.bin", "A RealSR model trained on anime images for 4x upscaling.", "", 0, false, false, true, REALESRGAN_SCRIPT, "realesrgan-ncnn/models/realesr-animevideov3-x4.bin"),
@@ -1309,6 +1321,28 @@ async function upscale(event, modelInfo, scaleRatio, exportFilePath, cacheDir, s
         reject(error);
       });
     });
+  } else if (sourceFile.endsWith(".mp4") || sourceFile.endsWith(".avi") || sourceFile.endsWith(".mov") || sourceFile.endsWith(".mkv") || sourceFile.endsWith(".vlc")) {
+    console.log("Upscaling video");
+    const modelsPath = path.join(process.env.HOME || process.env.USERPROFILE || "", "Documents", "eiko", "models");
+    let ffmpegPath = "";
+    const searchForFFmpeg = (dir) => {
+      fs.readdirSync(dir).forEach((file) => {
+        const filePath = path.join(dir, file);
+        if (fs.lstatSync(filePath).isDirectory()) {
+          searchForFFmpeg(filePath);
+        }
+        if (file === "ffmpeg.exe") {
+          ffmpegPath = filePath;
+        }
+      });
+    };
+    searchForFFmpeg(modelsPath);
+    if (!ffmpegPath || ffmpegPath === "") {
+      return { error: "FFmpeg not found in models directory" };
+    }
+    modelInfo.name.split(".bin")[0];
+    const fileName = path.basename(sourceFile);
+    path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1e3)}_${fileName}`);
   }
   return { message: "C:/Users/username/Documents/eiko/models" };
 }

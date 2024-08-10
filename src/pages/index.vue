@@ -134,11 +134,14 @@ async function processImage() {
 
     const result = await response.json();
 
+    console.log('Upscaling result:', result);
+
     const resultFilePath = result.filePath;
     console.log('Result file path:', resultFilePath);
 
     if (result.error) {
       console.error('Upscaling failed:', result.error);
+      return;
     } else {
       console.log('Upscaling completed:', result.filePath);
     }
@@ -161,9 +164,9 @@ async function monitorProgress() {
       console.log('Progress:', currentProgress);
       progress.value = currentProgress;
 
-      if (currentProgress > 0) {
+      // if (currentProgress > 0) {
         isStarted = true;
-      }
+      // }
 
       if (isStarted && currentProgress === 0 && lastProgress > 0) {
         console.log('Process completed (reset to 0)');

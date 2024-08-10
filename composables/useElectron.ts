@@ -1,3 +1,5 @@
+import path from 'path'
+
 export default function useElectron() {
   const isServer = process.server || typeof window === 'undefined' || typeof window.require === 'undefined'
   const isElectron = !isServer && navigator.userAgent.toLowerCase().includes('electron')
@@ -62,6 +64,9 @@ export default function useElectron() {
         console.error('Error exploring folder:', error)
         throw error // Re-throw the error so the caller can handle it
       }
+    },
+    pathsJoin: (path1: string, path2: string) => {
+      return path.join(path1, path2)
     }
   }
 

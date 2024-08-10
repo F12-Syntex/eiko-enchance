@@ -5,6 +5,9 @@ import * as fs from 'fs'
 import type { Model } from '~/src/types/model'
 import { defineEventHandler, H3Event, readBody } from 'h3'
 import { ref } from 'vue'
+import aiModels from '../../controller/ai-models'
+import Settings from '~/src/pages/Settings.vue'
+import SettingsManager from '~/src/managers/SettingsManager'
 
 const progressRef = ref(0)
 
@@ -30,7 +33,7 @@ async function upscale(event: H3Event, modelInfo: Model, scaleRatio: any, export
         if (data.includes('%')) {
           const progress = data.split('%')[0].trim()
           console.log(`progress: ${progress}`)
-          progressRef.value = parseFloat(progress) 
+          progressRef.value = parseFloat(progress)
         }
       })
 
@@ -48,6 +51,41 @@ async function upscale(event: H3Event, modelInfo: Model, scaleRatio: any, export
         reject(error)
       })
     })
+  } else if (sourceFile.endsWith('.mp4') || sourceFile.endsWith('.avi') || sourceFile.endsWith('.mov') || sourceFile.endsWith('.mkv') || sourceFile.endsWith('.vlc')) {
+    console.log('Upscaling video')
+
+    //check if the ffmpeg dependency is installed
+    const modelsPath = path.join(process.env.HOME || process.env.USERPROFILE || '', 'Documents', 'eiko', 'models')
+
+    //recursively search for the ffmpeg.exe executable in the models directory
+    let ffmpegPath = ''
+    const searchForFFmpeg = (dir: string) => {
+      fs.readdirSync(dir).forEach((file) => {
+        const filePath = path.join(dir, file)
+        if (fs.lstatSync(filePath).isDirectory()) {
+          searchForFFmpeg(filePath)
+        }
+        if (file === 'ffmpeg.exe') {
+          ffmpegPath = filePath
+        }
+      })
+    }
+    searchForFFmpeg(modelsPath)
+
+    if (!ffmpegPath || ffmpegPath === '') {
+      return { error: 'FFmpeg not found in models directory' }
+    }
+
+    //first we will extract every frame from the video, then use realesrgan-ncnn to upscale the entire folder in one go using the directory as input
+    const modelName = modelInfo.name.split('.bin')[0]
+    const fileName = path.basename(sourceFile)
+    const outputDir = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1000)}_${fileName}`)
+    let command = `${executable} -i ${sourceFile} -o ${outputDir} -n ${modelName}`
+    if (scaleRatio > 1 && scaleRatio < 5) {
+      command += ` -s ${scaleRatio}`
+    }
+
+    //first extract all the frames to the output directory in the folder called {name}_frames
   }
 
   return { message: 'C:/Users/username/Documents/eiko/models' }
