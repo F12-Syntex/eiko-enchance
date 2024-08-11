@@ -47,9 +47,11 @@ function upscaleVideo(modelInfo: Model, scaleRatio: number, exportFilePath: stri
     return { error: 'FFmpeg not found in models directory' }
   }
 
+  const randomConstant = Math.floor(Math.random() * 1000)
+
   const fileName = path.basename(sourceFile).split('.')[0]
-  const outputDir = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1000)}_${fileName}_frames`)
-  const audioPath = path.join(exportFilePath, `${fileName}${Math.random() * 1000}_audio.aac`)
+  const outputDir = path.join(exportFilePath, `${fileName}_raw_frames(${randomConstant})`)
+  const audioPath = path.join(exportFilePath, `${fileName}${randomConstant}_audio.aac`)
 
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir)
@@ -62,13 +64,13 @@ function upscaleVideo(modelInfo: Model, scaleRatio: number, exportFilePath: stri
     const frameRate = await getFrameRate(ffmpegPath, sourceFile)
     const totalFrames = getTotalFrames(outputDir)
 
-    const upscaledFramesDir = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1000)}_${fileName}_upscaled`)
+    const upscaledFramesDir = path.join(exportFilePath, `${fileName}_upscaled_frames(${randomConstant})`)
     if (!fs.existsSync(upscaledFramesDir)) {
       fs.mkdirSync(upscaledFramesDir)
     }
 
     return upscaleVideoFrames(outputDir, modelInfo, scaleRatio, upscaledFramesDir, cacheDir, totalFrames, frameRate).then(() => {
-      const outputVideoPath = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1000)}_${fileName}_upscaled.mp4`)
+      const outputVideoPath = path.join(exportFilePath, `${fileName}_upscaled(${randomConstant}).mp4`)
       return createVideoFromFramesWithAudio(ffmpegPath, upscaledFramesDir, audioPath, outputVideoPath, frameRate)
     })
   })
@@ -180,7 +182,7 @@ function upscaleVideoFrames(outputDir: string, modelInfo: Model, scaleRatio: num
         const progress = parseFloat(data.split('%')[0].trim())
         // console.log(`Frame progress: ${progress}%`)
 
-        console.log('Progress:', data)
+        // console.log('Progress:', data)
 
         // Count the number of files in the export directory
         const processedFrames = fs.readdirSync(exportFilePath).length

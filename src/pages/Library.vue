@@ -10,12 +10,36 @@
                 Back
             </button>
             <span class="current-path">{{ currentPathString }}</span>
+            <button @click="toggleViewMode" class="view-mode-button">
+                <svg v-if="viewMode === 'gallery'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="feather feather-list">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-grid">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+            </button>
         </div>
-        <div class="library-content">
-            <div v-for="item in sortedItems" :key="item.name" class="library-item">
+        <div :class="['library-content', viewMode]">
+            <div v-for="item in sortedItems" :key="item.name" :class="['library-item', viewMode]">
                 <template v-if="item.type === 'directory'">
                     <div class="folder" @click="openFolder(item.name)">
-                        <i class="fas fa-folder"></i>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="orange" stroke="orange"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="feather feather-folder">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z">
+                            </path>
+                        </svg>
                         <span>{{ item.name }}</span>
                     </div>
                 </template>
@@ -71,6 +95,7 @@
         </div>
     </div>
 </template>
+
 <script setup>
 import { ref, computed, onMounted, watch, nextTick, onUnmounted } from 'vue';
 import useElectron from '../../composables/useElectron';
@@ -80,11 +105,12 @@ const items = ref([]);
 const currentPath = ref([]);
 const previewItem = ref(null);
 const mediaPreview = ref(null);
+const viewMode = ref('gallery'); // New ref for view mode
 
 const sortedItems = computed(() => {
     return [...items.value].sort((a, b) => {
-        if (a.type === 'directory' && b.type !== 'directory') return 1;
-        if (b.type === 'directory' && a.type !== 'directory') return -1;
+        if (a.type === 'directory' && b.type !== 'directory') return -1;
+        if (b.type === 'directory' && a.type !== 'directory') return 1;
         return a.name.localeCompare(b.name);
     });
 });
@@ -248,14 +274,20 @@ const navigatePreview = (direction) => {
 };
 
 const handleKeydown = (event) => {
-    event.preventDefault();
-    if (event.key === 'ArrowLeft') {
-        navigatePreview(-1);
-    } else if (event.key === 'ArrowRight') {
-        navigatePreview(1);
-    } else if (event.key === 'Escape') {
-        closePreview();
+    if (previewItem.value) {
+        event.preventDefault();
+        if (event.key === 'ArrowLeft') {
+            navigatePreview(-1);
+        } else if (event.key === 'ArrowRight') {
+            navigatePreview(1);
+        } else if (event.key === 'Escape') {
+            closePreview();
+        }
     }
+};
+
+const toggleViewMode = () => {
+    viewMode.value = viewMode.value === 'gallery' ? 'list' : 'gallery';
 };
 
 onMounted(async () => {
@@ -276,20 +308,6 @@ watch(currentPath, async () => {
 </script>
 
 <style scoped>
-.audio {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-}
-
-.audio i {
-    font-size: 50px;
-    margin-bottom: 10px;
-    color: #0e639c;
-}
-
 .library-container {
     width: 100%;
     height: 100vh;
@@ -306,7 +324,7 @@ watch(currentPath, async () => {
     align-items: center;
 }
 
-.back-button {
+.back-button, .view-mode-button {
     display: flex;
     align-items: center;
     background: none;
@@ -319,7 +337,8 @@ watch(currentPath, async () => {
     transition: background-color 0.3s;
 }
 
-.back-button:hover:not(:disabled) {
+.back-button:hover:not(:disabled),
+.view-mode-button:hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -328,7 +347,8 @@ watch(currentPath, async () => {
     cursor: not-allowed;
 }
 
-.back-button svg {
+.back-button svg,
+.view-mode-button svg {
     width: 20px;
     height: 20px;
     margin-right: 5px;
@@ -338,16 +358,124 @@ watch(currentPath, async () => {
     margin-left: 15px;
     font-size: 14px;
     opacity: 0.8;
+    flex-grow: 1;
+}
+
+.view-mode-button {
+    margin-left: auto;
 }
 
 .library-content {
     flex-grow: 1;
-    display: flex;
-    flex-wrap: wrap;
     overflow-y: auto;
     padding: 15px;
-    align-content: flex-start;
     height: 0;
+}
+
+.library-content.gallery {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+}
+
+.library-content.list {
+    display: block;
+}
+
+.library-item {
+    margin: 10px;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: transform 0.3s, background-color 0.3s;
+    overflow: hidden;
+}
+
+.library-item.gallery {
+    width: 150px;
+    height: 150px;
+}
+
+.library-item.list {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 50px;
+    padding: 5px 10px;
+}
+
+.library-item:hover {
+    background-color: #2d2d2d;
+}
+
+.library-item.gallery:hover {
+    transform: translateY(-5px);
+}
+
+.folder,
+.image,
+.video,
+.audio {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+}
+
+.library-item.gallery .folder,
+.library-item.gallery .image,
+.library-item.gallery .video,
+.library-item.gallery .audio {
+    flex-direction: column;
+    justify-content: center;
+}
+
+.library-item.list .folder,
+.library-item.list .image,
+.library-item.list .video,
+.library-item.list .audio {
+    justify-content: flex-start;
+}
+
+.folder svg,
+.audio i {
+    font-size: 50px;
+    color: #0e639c;
+    width: 50px;
+    height: 50px;
+}
+
+.library-item.list .folder svg,
+.library-item.list .audio i {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+    margin-right: 10px;
+}
+
+.video-thumbnail,
+.image img {
+    max-width: 100%;
+    max-height: 80%;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.library-item.list .video-thumbnail,
+.library-item.list .image img {
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
+}
+
+.library-item span {
+    font-size: 14px;
+    word-break: break-word;
+    padding: 0 5px;
+}
+
+.library-item.gallery span {
+    margin-top: 5px;
 }
 
 .media-preview {
@@ -364,66 +492,6 @@ watch(currentPath, async () => {
     outline: none;
 }
 
-.library-item {
-    width: 150px;
-    height: 150px;
-    margin: 10px;
-    text-align: center;
-    cursor: pointer;
-    border-radius: 8px;
-    transition: transform 0.3s, background-color 0.3s;
-    overflow: hidden;
-}
-
-.library-item:hover {
-    background-color: #2d2d2d;
-    transform: translateY(-5px);
-}
-
-.folder,
-.image,
-.video {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-}
-
-.folder i {
-    font-size: 50px;
-    margin-bottom: 10px;
-    color: #0e639c;
-}
-
-.video-thumbnail,
-.image img {
-    max-width: 100%;
-    max-height: 80%;
-    object-fit: cover;
-    border-radius: 4px;
-}
-
-.library-item span {
-    font-size: 14px;
-    margin-top: 5px;
-    word-break: break-word;
-    padding: 0 5px;
-}
-
-.media-preview {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.9);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
 .preview-content {
     max-width: 90%;
     max-height: 90%;
@@ -431,7 +499,8 @@ watch(currentPath, async () => {
 }
 
 .preview-content img,
-.preview-content video {
+.preview-content video,
+.preview-content audio {
     max-width: 100%;
     max-height: 100%;
     border-radius: 8px;
