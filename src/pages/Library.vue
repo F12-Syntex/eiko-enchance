@@ -29,7 +29,7 @@
                     </div>
                 </template>
                 <template v-else-if="item.type === 'video'">
-                    <div class="video" @click="previewMedia(item)">
+                    <div class="video" @click="previewVideo(item)">
                         <img :src="item.thumbnailUrl" :alt="item.name" class="video-thumbnail">
                         <span>{{ item.name }}</span>
                     </div>
@@ -42,14 +42,10 @@
                 </template>
             </div>
         </div>
-        <div v-if="previewItem" class="media-preview" tabindex="0" ref="mediaPreview">
+        <div v-if="previewItem && previewItem.type !== 'video'" class="media-preview" tabindex="0" ref="mediaPreview">
             <div class="preview-content">
                 <button class="close-preview" @click="closePreview">&times;</button>
                 <img v-if="previewItem.type === 'image'" :src="previewItem.url" :alt="previewItem.name">
-                <video v-else-if="previewItem.type === 'video'" controls>
-                    <source :src="previewItem.url" :type="'video/' + previewItem.name.split('.').pop()">
-                    Your browser does not support the video tag.
-                </video>
                 <audio v-else-if="previewItem.type === 'audio'" controls>
                     <source :src="previewItem.url" :type="'audio/' + getAudioType(previewItem.name)">
                     Your browser does not support the audio tag.
@@ -72,6 +68,12 @@
                 </button>
             </div>
         </div>
+        <VideoPreview
+            v-if="previewItem && previewItem.type === 'video'"
+            :video="previewItem"
+            @close="closePreview"
+            @navigate="navigatePreview"
+        />
     </div>
 </template>
 
@@ -80,6 +82,7 @@ import { ref, computed, onMounted, watch, nextTick, onUnmounted } from 'vue';
 import useElectron from '../../composables/useElectron';
 import SettingsManager from '../managers/SettingsManager';
 import HeaderComponent from '../components/HeaderComponent.vue';
+import VideoPreview from '../components/VideoPreview.vue';
 
 const items = ref([]);
 const currentPath = ref([]);
@@ -87,6 +90,11 @@ const previewItem = ref(null);
 const mediaPreview = ref(null);
 const viewMode = ref('gallery'); // New ref for view mode
 const galleryItemSize = ref('medium'); // New ref for gallery item size
+
+
+const previewVideo = (item) => {
+    previewItem.value = item;
+};
 
 const sortedItems = computed(() => {
     return [...items.value].sort((a, b) => {

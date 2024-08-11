@@ -86,3 +86,5 @@ nuxt-build/types/plugins.d.ts
 nuxt-build/ui.colors.d.ts
 
 nuxt-build/ui.colors.mjs
+
+nuxt-build/
