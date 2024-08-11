@@ -41,8 +41,9 @@ function upscaleVideo(modelInfo: Model, scaleRatio: number, exportFilePath: stri
   console.log('Upscaling video')
   const modelsPath = path.join(os.homedir(), 'Documents', 'eiko', 'models')
   const ffmpegPath = findExecutable(modelsPath, 'ffmpeg.exe')
+  const ffprobPath = findExecutable(modelsPath, 'ffprobe.exe')
 
-  if (!ffmpegPath) {
+  if (!ffmpegPath || !ffprobPath) {
     return { error: 'FFmpeg not found in models directory' }
   }
 
@@ -57,20 +58,29 @@ function upscaleVideo(modelInfo: Model, scaleRatio: number, exportFilePath: stri
   const extractFramesCmd = `${ffmpegPath} -i "${sourceFile}" "${outputDir}\\%04d.png"`
   const extractAudioCmd = `${ffmpegPath} -i "${sourceFile}" -vn -acodec copy "${audioPath}"`
 
-  return Promise.all([upscaleVideoScript(extractFramesCmd), upscaleVideoScript(extractAudioCmd)]).then(() => {
+  return Promise.all([upscaleVideoScript(extractFramesCmd), upscaleVideoScript(extractAudioCmd)]).then(async () => {
+    const frameRate = await getFrameRate(ffmpegPath, sourceFile)
     const totalFrames = getTotalFrames(outputDir)
-    console.log(`Total frames: ${totalFrames}`)
 
     const upscaledFramesDir = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1000)}_${fileName}_upscaled`)
     if (!fs.existsSync(upscaledFramesDir)) {
       fs.mkdirSync(upscaledFramesDir)
     }
 
-    return upscaleVideoFrames(outputDir, modelInfo, scaleRatio, upscaledFramesDir, cacheDir, totalFrames).then(() => {
+    return upscaleVideoFrames(outputDir, modelInfo, scaleRatio, upscaledFramesDir, cacheDir, totalFrames, frameRate).then(() => {
       const outputVideoPath = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1000)}_${fileName}_upscaled.mp4`)
-      return createVideoFromFramesWithAudio(ffmpegPath, upscaledFramesDir, audioPath, outputVideoPath, 30)
+      return createVideoFromFramesWithAudio(ffmpegPath, upscaledFramesDir, audioPath, outputVideoPath, frameRate)
     })
   })
+}
+async function getFrameRate(ffmpegPath: string, sourceFile: string): Promise<number> {
+  const command = `${ffmpegPath} -i "${sourceFile}"`
+  const response = await executeCommand(command, '', true)
+  const output = response.output || ''
+  const match = output.match(/(\d+\.?\d*) fps/)
+  const fps = match ? parseFloat(match[1]) : 30
+  console.log(`Frame rate: ${fps}`)
+  return fps
 }
 
 function createVideoFromFramesWithAudio(ffmpegPath: string, outputDir: string, audioPath: string, exportFilePath: string, frameRate: number) {
@@ -118,25 +128,36 @@ function findExecutable(dir: string, executableName: string): string | null {
   return foundPath
 }
 
-function executeCommand(command: string, outputFile?: string) {
+function executeCommand(command: string, outputFile: string, returnOutput = false): Promise<{ filePath?: string, output?: string }> {
   return new Promise((resolve, reject) => {
     const process = exec(command)
 
-    process.on('close', (code) => {
+    let output = ''
+
+    process.stdout?.on('data', (data: string) => {
+      output += data
+    })
+
+    process.stderr?.on('data', (data: string) => {
+      output += data
+    })
+
+    process.on('close', (code: number) => {
       console.log(`close >> child process exited with code ${code}`)
       if (code === 0) {
-        resolve(outputFile ? { filePath: outputFile } : {})
+        if (returnOutput) {
+          resolve({ output })
+        } else {
+          resolve(outputFile ? { filePath: outputFile } : {})
+        }
       } else {
-        reject(new Error(`Process exited with code ${code}`))
+        // reject(new Error(`Process exited with code ${code}`))
+        resolve({ output })
       }
     })
 
-    process.on('error', (error) => {
+    process.on('error', (error: Error) => {
       reject(error)
-    })
-
-    process.stderr?.on('data', (data) => {
-      console.log(`stderr: ${data}`)
     })
   })
 }
@@ -146,10 +167,10 @@ function createVideoFromFrames(ffmpegPath: string, outputDir: string, exportFile
   return executeCommand(command, exportFilePath)
 }
 
-function upscaleVideoFrames(outputDir: string, modelInfo: Model, scaleRatio: number, exportFilePath: string, cacheDir: string, totalFrames: number) {
+function upscaleVideoFrames(outputDir: string, modelInfo: Model, scaleRatio: number, exportFilePath: string, cacheDir: string, totalFrames: number, frameRate: number) {
   const modelName = modelInfo.name.split('.bin')[0]
   const executable = path.join(os.homedir(), 'Documents', 'eiko', 'models', modelInfo.execusionScriptPath)
-  const command = `${executable} -i ${outputDir} -o ${exportFilePath} -n ${modelName}`
+  const command = `${executable} -i ${outputDir} -o ${exportFilePath} -n ${modelName} fps=${frameRate}`
 
   return new Promise((resolve, reject) => {
     const process = exec(command)
@@ -157,14 +178,16 @@ function upscaleVideoFrames(outputDir: string, modelInfo: Model, scaleRatio: num
     process.stderr?.on('data', (data) => {
       if (data.includes('%')) {
         const progress = parseFloat(data.split('%')[0].trim())
-        console.log(`Frame progress: ${progress}%`)
+        // console.log(`Frame progress: ${progress}%`)
+
+        console.log('Progress:', data)
 
         // Count the number of files in the export directory
         const processedFrames = fs.readdirSync(exportFilePath).length
 
         // Calculate overall progress
         progressRef.value = Math.floor((processedFrames / totalFrames + progress / 100 / totalFrames) * 100)
-        console.log(`Overall progress: ${progressRef.value.toFixed(2)}%`)
+        // console.log(`Overall progress: ${progressRef.value.toFixed(2)}%`)
       }
     })
 
@@ -202,6 +225,5 @@ export default defineEventHandler(async (event) => {
 
 async function getProgress() {
   const currentProgress = progressRef.value || 0
-  console.log(`currentProgress: ${currentProgress}`)
   return { progress: currentProgress }
 }

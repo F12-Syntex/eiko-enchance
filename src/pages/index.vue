@@ -215,7 +215,6 @@ async function processImage() {
 async function monitorProgress() {
   try {
     const { progress: currentProgress } = await getProgress();
-    console.log('Progress:', currentProgress);
     progress.value = currentProgress;
   } catch (error) {
     console.error('Error checking progress:', error);
