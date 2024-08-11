@@ -7,48 +7,30 @@
     <div class="content" v-show="!isCollapsed">
       <div class="option-grid">
         <div class="option-group">
-          <label for="tile-size">Tile Size</label>
-          <input type="number" id="tile-size" v-model="options.tileSize" min="32" max="2048" step="32" />
-          <p class="description">Tile size for splitting large images (default: 512)</p>
+          <label for="start-time">Start Time</label>
+          <div class="time-select">
+            <select v-model="options.startTimeMinutes">
+              <option v-for="minute in 60" :key="minute" :value="minute - 1">{{ formatTime(minute - 1) }}</option>
+            </select>
+            <span>:</span>
+            <select v-model="options.startTimeSeconds">
+              <option v-for="second in 60" :key="second" :value="second - 1">{{ formatTime(second - 1) }}</option>
+            </select>
+          </div>
+          <p class="description">Start time in minutes:seconds (default: 00:00)</p>
         </div>
         <div class="option-group">
-          <label for="tile-pad">Tile Pad</label>
-          <input type="number" id="tile-pad" v-model="options.tilePad" min="0" max="64" step="1" />
-          <p class="description">Tile padding for splitting large images (default: 10)</p>
-        </div>
-        <div class="option-group">
-          <label for="pre-pad">Pre Pad</label>
-          <input type="number" id="pre-pad" v-model="options.prePad" min="0" max="64" step="1" />
-          <p class="description">Pre-padding for upscaling (default: 10)</p>
-        </div>
-        <div class="option-group">
-          <label for="face-enhance">Face Enhance</label>
-          <input type="checkbox" id="face-enhance" v-model="options.faceEnhance" />
-          <p class="description">Enable face enhancement (default: true)</p>
-        </div>
-        <div class="option-group">
-          <label for="face-inst">Face Inst</label>
-          <input type="text" id="face-inst" v-model="options.faceInst" />
-          <p class="description">Path to face instance (optional)</p>
-        </div>
-        <div class="option-group">
-          <label for="denoise-level">Denoise Level</label>
-          <input type="number" id="denoise-level" v-model="options.denoiseLevel" min="0" max="5" step="1" />
-          <p class="description">Denoise level (0 - 5) (default: 0)</p>
-        </div>
-        <div class="option-group">
-          <label for="upscale-level">Upscale Level</label>
-          <input type="number" id="upscale-level" v-model="options.upscaleLevel" min="1" max="4" step="1" />
-          <p class="description">Upscale level (1 - 4) (default: 2)</p>
-        </div>
-        <div class="option-group">
-          <label for="output-format">Output Format</label>
-          <select id="output-format" v-model="options.outputFormat">
-            <option value="png">PNG</option>
-            <option value="jpg">JPG</option>
-            <option value="webp">WebP</option>
-          </select>
-          <p class="description">Output image format (default: PNG)</p>
+          <label for="duration">Duration</label>
+          <div class="time-select">
+            <select v-model="options.durationMinutes">
+              <option v-for="minute in 60" :key="minute" :value="minute - 1">{{ formatTime(minute - 1) }}</option>
+            </select>
+            <span>:</span>
+            <select v-model="options.durationSeconds">
+              <option v-for="second in 60" :key="second" :value="second - 1">{{ formatTime(second - 1) }}</option>
+            </select>
+          </div>
+          <p class="description">Duration in minutes:seconds (default: 00:00)</p>
         </div>
       </div>
     </div>
@@ -56,31 +38,55 @@
 </template>
 
 <script>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 
 export default {
   name: 'AdvancedOptions',
   setup(props, { emit }) {
     const isCollapsed = ref(false);
     const options = ref({
-      tileSize: 512,
-      tilePad: 10,
-      prePad: 10,
-      faceEnhance: true,
-      faceInst: '',
-      denoiseLevel: 0,
-      upscaleLevel: 2,
-      outputFormat: 'png',
+      startTimeMinutes: 0,
+      startTimeSeconds: 0,
+      durationMinutes: 0,
+      durationSeconds: 0,
     });
 
     const emitOptions = () => {
       emit('update:options', options.value);
+      saveOptionsToSession();
     };
+
+    const saveOptionsToSession = () => {
+      sessionStorage.setItem('startTimeMinutes', options.value.startTimeMinutes);
+      sessionStorage.setItem('startTimeSeconds', options.value.startTimeSeconds);
+      sessionStorage.setItem('durationMinutes', options.value.durationMinutes);
+      sessionStorage.setItem('durationSeconds', options.value.durationSeconds);
+    };
+
+    const loadOptionsFromSession = () => {
+      options.value.startTimeMinutes = parseInt(sessionStorage.getItem('startTimeMinutes')) || 0;
+      options.value.startTimeSeconds = parseInt(sessionStorage.getItem('startTimeSeconds')) || 0;
+      options.value.durationMinutes = parseInt(sessionStorage.getItem('durationMinutes')) || 0;
+      options.value.durationSeconds = parseInt(sessionStorage.getItem('durationSeconds')) || 0;
+    };
+
+    const formatTime = (value) => {
+      return value.toString().padStart(2, '0');
+    };
+
+    onMounted(() => {
+      loadOptionsFromSession();
+    });
+
+    onUnmounted(() => {
+      saveOptionsToSession();
+    });
 
     return {
       isCollapsed,
       options,
       emitOptions,
+      formatTime,
     };
   },
 };
@@ -128,7 +134,7 @@ h2 {
 
 .option-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 2rem;
 }
 
@@ -145,35 +151,36 @@ label {
   margin-bottom: 0.5rem;
 }
 
-input[type="number"],
-input[type="text"],
 select {
   padding: 0.75rem;
   border-radius: 10px;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: #444444;
   color: #e0e0e0;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid #555555;
   font-size: 1rem;
   width: 100%;
   transition: all 0.3s ease;
 }
 
-input[type="number"]:focus,
-input[type="text"]:focus,
 select:focus {
   outline: none;
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: #555555;
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
-}
-
-input[type="checkbox"] {
-  margin-right: 0.5rem;
-  transform: scale(1.2);
 }
 
 .description {
   font-size: 0.9rem;
   color: #b0b0b0;
   margin-top: 0.25rem;
+}
+
+.time-select {
+  display: flex;
+  align-items: center;
+}
+
+.time-select select {
+  width: auto;
+  margin: 0 0.5rem;
 }
 </style>

@@ -83,13 +83,6 @@ const isProcessing = ref(false);
 const progress = ref(0);
 const processedImageUrl = ref('');
 
-const tileSize = ref(512);
-const tilePad = ref(10);
-const prePad = ref(10);
-const faceEnhance = ref(true);
-const faceInst = ref('');
-const denoiseLevel = ref(0);
-
 const availableModels = ref([]);
 const intervalId = ref(null);
 
@@ -140,19 +133,6 @@ function handleFileDrop(event) {
   }
 }
 
-watch([scaleRatio, selectedAiTool, isProcessing, tileSize, tilePad, prePad, faceEnhance, faceInst, denoiseLevel], () => {
-  // Save to sessionStorage
-  sessionStorage.setItem('scaleRatio', scaleRatio.value);
-  sessionStorage.setItem('selectedAiTool', selectedAiTool.value);
-  sessionStorage.setItem('isProcessing', isProcessing.value);
-  sessionStorage.setItem('tileSize', tileSize.value);
-  sessionStorage.setItem('tilePad', tilePad.value);
-  sessionStorage.setItem('prePad', prePad.value);
-  sessionStorage.setItem('faceEnhance', faceEnhance.value);
-  sessionStorage.setItem('faceInst', faceInst.value);
-  sessionStorage.setItem('denoiseLevel', denoiseLevel.value);
-});
-
 async function processImage() {
   isProcessing.value = true;
   progress.value = 0;
@@ -164,23 +144,21 @@ async function processImage() {
   const cacheDir = settings.getSettings().cacheDirectory;
   const sourceFile = filePath.value;
 
-
-  //update advanced options based on the data in the advanced options component
+  //get the advanced options from the AdvancedOptions component
   advancedOptions.value = {
-    tileSize: tileSize.value,
-    tilePad: tilePad.value,
-    prePad: prePad.value,
-    faceEnhance: faceEnhance.value,
-    faceInst: faceInst.value,
-    denoiseLevel: denoiseLevel.value
+    startTimeMinutes: parseInt(sessionStorage.getItem('startTimeMinutes')) || 0,
+    startTimeSeconds: parseInt(sessionStorage.getItem('startTimeSeconds')) || 0,
+    durationMinutes: parseInt(sessionStorage.getItem('durationMinutes')) || 0,
+    durationSeconds: parseInt(sessionStorage.getItem('durationSeconds')) || 0,
   };
+
 
   const request = {
     exportFilePath: exportFilePath,
     sourceFile: sourceFile,
     cacheDir: cacheDir,
     aiModel: modelInfo,
-    advancedOptions: advancedOptions.value
+    advancedOptions: advancedOptions.value,
   };
 
   console.log('Processing file:', request);
@@ -263,12 +241,6 @@ onMounted(() => {
   const storedScaleRatio = sessionStorage.getItem('scaleRatio');
   const storedSelectedAiTool = sessionStorage.getItem('selectedAiTool');
   const storedIsProcessing = sessionStorage.getItem('isProcessing');
-  const storedTileSize = sessionStorage.getItem('tileSize');
-  const storedTilePad = sessionStorage.getItem('tilePad');
-  const storedPrePad = sessionStorage.getItem('prePad');
-  const storedFaceEnhance = sessionStorage.getItem('faceEnhance');
-  const storedFaceInst = sessionStorage.getItem('faceInst');
-  const storedDenoiseLevel = sessionStorage.getItem('denoiseLevel');
 
   if (storedFilePath) filePath.value = storedFilePath;
   if (storedPreviewUrl) previewUrl.value = storedPreviewUrl;
@@ -276,12 +248,6 @@ onMounted(() => {
   if (storedScaleRatio) scaleRatio.value = parseInt(storedScaleRatio);
   if (storedSelectedAiTool) selectedAiTool.value = storedSelectedAiTool;
   if (storedIsProcessing) isProcessing.value = storedIsProcessing === 'true';
-  if (storedTileSize) tileSize.value = parseInt(storedTileSize);
-  if (storedTilePad) tilePad.value = parseInt(storedTilePad);
-  if (storedPrePad) prePad.value = parseInt(storedPrePad);
-  if (storedFaceEnhance) faceEnhance.value = storedFaceEnhance === 'true';
-  if (storedFaceInst) faceInst.value = storedFaceInst;
-  if (storedDenoiseLevel) denoiseLevel.value = parseInt(storedDenoiseLevel);
 
   intervalId.value = setInterval(monitorProgress, 100);
 });
@@ -392,7 +358,7 @@ main {
   flex-direction: column;
   gap: 1.5rem;
   width: 100%;
-  max-width: 800px;
+  max-width: 80%;
 }
 
 .control-group {

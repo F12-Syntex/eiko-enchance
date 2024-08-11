@@ -15,7 +15,7 @@ async function upscale(event: H3Event, modelInfo: Model, scaleRatio: number, exp
   if (isImage) {
     return upscaleImage(modelInfo, scaleRatio, exportFilePath, sourceFile)
   } else if (isVideo) {
-    return upscaleVideo(modelInfo, scaleRatio, exportFilePath, cacheDir, sourceFile)
+    return upscaleVideo(modelInfo, scaleRatio, exportFilePath, cacheDir, sourceFile, advcancedOptions)
   }
 
   return { message: 'Unsupported file type' }
@@ -37,43 +37,45 @@ function upscaleImage(modelInfo: Model, scaleRatio: number, exportFilePath: stri
   return executeCommand(command, outputFile)
 }
 
-function upscaleVideo(modelInfo: Model, scaleRatio: number, exportFilePath: string, cacheDir: string, sourceFile: string) {
+function upscaleVideo(modelInfo: Model, scaleRatio: number, exportFilePath: string, cacheDir: string, sourceFile: string, advcancedOptions: any) {
   console.log('Upscaling video')
-  const modelsPath = path.join(os.homedir(), 'Documents', 'eiko', 'models')
-  const ffmpegPath = findExecutable(modelsPath, 'ffmpeg.exe')
-  const ffprobPath = findExecutable(modelsPath, 'ffprobe.exe')
+  console.log('Advanced Options:', advcancedOptions)
+  return { error: 'Upscaling video is not supported yet' }
+  // const modelsPath = path.join(os.homedir(), 'Documents', 'eiko', 'models')
+  // const ffmpegPath = findExecutable(modelsPath, 'ffmpeg.exe')
+  // const ffprobPath = findExecutable(modelsPath, 'ffprobe.exe')
 
-  if (!ffmpegPath || !ffprobPath) {
-    return { error: 'FFmpeg not found in models directory' }
-  }
+  // if (!ffmpegPath || !ffprobPath) {
+  //   return { error: 'FFmpeg not found in models directory' }
+  // }
 
-  const randomConstant = Math.floor(Math.random() * 1000)
+  // const randomConstant = Math.floor(Math.random() * 1000)
 
-  const fileName = path.basename(sourceFile).split('.')[0]
-  const outputDir = path.join(exportFilePath, `${fileName}_raw_frames(${randomConstant})`)
-  const audioPath = path.join(exportFilePath, `${fileName}${randomConstant}_audio.aac`)
+  // const fileName = path.basename(sourceFile).split('.')[0]
+  // const outputDir = path.join(exportFilePath, `${fileName}_raw_frames(${randomConstant})`)
+  // const audioPath = path.join(exportFilePath, `${fileName}${randomConstant}_audio.aac`)
 
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir)
-  }
+  // if (!fs.existsSync(outputDir)) {
+  //   fs.mkdirSync(outputDir)
+  // }
 
-  const extractFramesCmd = `${ffmpegPath} -i "${sourceFile}" "${outputDir}\\%04d.png"`
-  const extractAudioCmd = `${ffmpegPath} -i "${sourceFile}" -vn -acodec copy "${audioPath}"`
+  // const extractFramesCmd = `${ffmpegPath} -i "${sourceFile}" "${outputDir}\\%04d.png"`
+  // const extractAudioCmd = `${ffmpegPath} -i "${sourceFile}" -vn -acodec copy "${audioPath}"`
 
-  return Promise.all([upscaleVideoScript(extractFramesCmd), upscaleVideoScript(extractAudioCmd)]).then(async () => {
-    const frameRate = await getFrameRate(ffmpegPath, sourceFile)
-    const totalFrames = getTotalFrames(outputDir)
+  // return Promise.all([upscaleVideoScript(extractFramesCmd), upscaleVideoScript(extractAudioCmd)]).then(async () => {
+  //   const frameRate = await getFrameRate(ffmpegPath, sourceFile)
+  //   const totalFrames = getTotalFrames(outputDir)
 
-    const upscaledFramesDir = path.join(exportFilePath, `${fileName}_upscaled_frames(${randomConstant})`)
-    if (!fs.existsSync(upscaledFramesDir)) {
-      fs.mkdirSync(upscaledFramesDir)
-    }
+  //   const upscaledFramesDir = path.join(exportFilePath, `${fileName}_upscaled_frames(${randomConstant})`)
+  //   if (!fs.existsSync(upscaledFramesDir)) {
+  //     fs.mkdirSync(upscaledFramesDir)
+  //   }
 
-    return upscaleVideoFrames(outputDir, modelInfo, scaleRatio, upscaledFramesDir, cacheDir, totalFrames, frameRate).then(() => {
-      const outputVideoPath = path.join(exportFilePath, `${fileName}_upscaled(${randomConstant}).mp4`)
-      return createVideoFromFramesWithAudio(ffmpegPath, upscaledFramesDir, audioPath, outputVideoPath, frameRate)
-    })
-  })
+  //   return upscaleVideoFrames(outputDir, modelInfo, scaleRatio, upscaledFramesDir, cacheDir, totalFrames, frameRate).then(() => {
+  //     const outputVideoPath = path.join(exportFilePath, `${fileName}_upscaled(${randomConstant}).mp4`)
+  //     return createVideoFromFramesWithAudio(ffmpegPath, upscaledFramesDir, audioPath, outputVideoPath, frameRate)
+  //   })
+  // })
 }
 async function getFrameRate(ffmpegPath: string, sourceFile: string): Promise<number> {
   const command = `${ffmpegPath} -i "${sourceFile}"`
