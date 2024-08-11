@@ -1,35 +1,14 @@
 <template>
     <div class="library-container">
-        <div class="folder-navigation">
-            <button @click="goBack" :disabled="currentPath.length === 0" class="back-button">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left">
-                    <line x1="19" y1="12" x2="5" y2="12"></line>
-                    <polyline points="12 19 5 12 12 5"></polyline>
-                </svg>
-                Back
-            </button>
-            <span class="current-path">{{ currentPathString }}</span>
-            <button @click="toggleViewMode" class="view-mode-button">
-                <svg v-if="viewMode === 'gallery'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    class="feather feather-list">
-                    <line x1="8" y1="6" x2="21" y2="6"></line>
-                    <line x1="8" y1="12" x2="21" y2="12"></line>
-                    <line x1="8" y1="18" x2="21" y2="18"></line>
-                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                </svg>
-                <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-grid">
-                    <rect x="3" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="14" width="7" height="7"></rect>
-                    <rect x="3" y="14" width="7" height="7"></rect>
-                </svg>
-            </button>
-        </div>
+        <HeaderComponent 
+            :currentPath="currentPath"
+            :currentPathString="currentPathString"
+            :viewMode="viewMode"
+            :galleryItemSize="galleryItemSize"
+            @goBack="goBack"
+            @toggleViewMode="toggleViewMode"
+            @changeGalleryItemSize="changeGalleryItemSize"
+        />
         <div :class="['library-content', viewMode]">
             <div v-for="item in sortedItems" :key="item.name" :class="['library-item', viewMode]">
                 <template v-if="item.type === 'directory'">
@@ -100,12 +79,14 @@
 import { ref, computed, onMounted, watch, nextTick, onUnmounted } from 'vue';
 import useElectron from '../../composables/useElectron';
 import SettingsManager from '../managers/SettingsManager';
+import HeaderComponent from '../components/HeaderComponent.vue';
 
 const items = ref([]);
 const currentPath = ref([]);
 const previewItem = ref(null);
 const mediaPreview = ref(null);
 const viewMode = ref('gallery'); // New ref for view mode
+const galleryItemSize = ref('medium'); // New ref for gallery item size
 
 const sortedItems = computed(() => {
     return [...items.value].sort((a, b) => {
@@ -206,6 +187,29 @@ const generateThumbnails = async () => {
     }
 };
 
+const toggleViewMode = () => {
+    viewMode.value = viewMode.value === 'gallery' ? 'list' : 'gallery';
+};
+
+const changeGalleryItemSize = (size) => {
+    galleryItemSize.value = size;
+};
+
+onMounted(async () => {
+    await loadCurrentFolder();
+    await generateThumbnails();
+    window.addEventListener('keydown', handleKeydown);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', handleKeydown);
+});
+
+watch(currentPath, async () => {
+    await loadCurrentFolder();
+    await generateThumbnails();
+}, { deep: true });
+
 const generateThumbnail = (url, type) => {
     return new Promise((resolve) => {
         const img = new Image();
@@ -284,10 +288,6 @@ const handleKeydown = (event) => {
             closePreview();
         }
     }
-};
-
-const toggleViewMode = () => {
-    viewMode.value = viewMode.value === 'gallery' ? 'list' : 'gallery';
 };
 
 onMounted(async () => {
@@ -392,8 +392,8 @@ watch(currentPath, async () => {
 }
 
 .library-item.gallery {
-    width: 150px;
-    height: 150px;
+    width: v-bind('galleryItemSize === "small" ? "100px" : galleryItemSize === "medium" ? "150px" : "200px"');
+    height: v-bind('galleryItemSize === "small" ? "100px" : galleryItemSize === "medium" ? "150px" : "200px"');
 }
 
 .library-item.list {
@@ -437,12 +437,16 @@ watch(currentPath, async () => {
     justify-content: flex-start;
 }
 
+
 .folder svg,
 .audio i {
-    font-size: 50px;
-    color: #0e639c;
-    width: 50px;
-    height: 50px;
+    font-size: v-bind('galleryItemSize === "small" ? "40px" : galleryItemSize === "medium" ? "80px" : "120px"');
+    width: v-bind('galleryItemSize === "small" ? "40px" : galleryItemSize === "medium" ? "80px" : "120px"');
+    height: v-bind('galleryItemSize === "small" ? "40px" : galleryItemSize === "medium" ? "80px" : "120px"');
+}
+
+.library-item span {
+    font-size: v-bind('galleryItemSize === "small" ? "12px" : galleryItemSize === "medium" ? "18px" : "24px"');
 }
 
 .library-item.list .folder svg,
@@ -466,12 +470,6 @@ watch(currentPath, async () => {
     width: 40px;
     height: 40px;
     margin-right: 10px;
-}
-
-.library-item span {
-    font-size: 14px;
-    word-break: break-word;
-    padding: 0 5px;
 }
 
 .library-item.gallery span {
