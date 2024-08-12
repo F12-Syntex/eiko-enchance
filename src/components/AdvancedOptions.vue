@@ -7,8 +7,12 @@
     <div class="content" v-show="!isCollapsed">
       <div class="slider-container">
         <div class="slider" ref="slider">
-          <div class="track"></div>
-          <div class="range" :style="{ left: `${startPercent}%`, width: `${endPercent - startPercent}%` }"></div>
+          <div class="track">
+            <div v-for="minute in maxMinutes" :key="minute"
+              :style="{ left: `${(minute * 60 / videoDuration.value) * 100}%` }" class="marker"></div>
+          </div>
+          <div class="range" :style="{ left: `${startPercent}%`, width: `${endPercent - startPercent}%` }"
+            @mousedown="startMove($event, 'range')"></div>
           <div class="thumb start-thumb" :style="{ left: `${startPercent}%` }" @mousedown="startMove($event, 'start')">
           </div>
           <div class="thumb end-thumb" :style="{ left: `${endPercent}%` }" @mousedown="startMove($event, 'end')"></div>
@@ -19,7 +23,9 @@
           </span>
         </div>
       </div>
-      <p class="description unselectable">Start: {{ formatTime(start) }} | End: {{ formatTime(end) }}</p>
+      <p class="description unselectable">
+        Start: {{ formatTime(start) }} | End: {{ formatTime(end) }}
+      </p>
     </div>
   </div>
 </template>
@@ -77,16 +83,30 @@ export default {
     };
 
     const startMove = (event, type) => {
+      event.preventDefault(); // Prevent text selection
       const slider = event.target.closest('.slider');
-      const onMouseMove = (e) => {
-        const rect = slider.getBoundingClientRect();
-        const percent = ((e.clientX - rect.left) / rect.width) * 100;
-        const newValue = ((percent / 100) * videoDuration.value);
+      const rect = slider.getBoundingClientRect();
+      const initialPercent = ((event.clientX - rect.left) / rect.width) * 100;
+      const initialStart = start.value;
+      const initialEnd = end.value;
+      const rangeWidth = initialEnd - initialStart;
 
-        if (type === 'start' && newValue < end.value) {
-          start.value = Math.max(0, Math.min(newValue, videoDuration.value));
-        } else if (type === 'end' && newValue > start.value) {
-          end.value = Math.max(0, Math.min(newValue, videoDuration.value));
+      const onMouseMove = (e) => {
+        const currentPercent = ((e.clientX - rect.left) / rect.width) * 100;
+        const deltaPercent = currentPercent - initialPercent;
+        const deltaValue = (deltaPercent / 100) * videoDuration.value;
+
+        if (type === 'start' && initialStart + deltaValue < end.value) {
+          start.value = Math.max(0, Math.min(initialStart + deltaValue, videoDuration.value));
+        } else if (type === 'end' && initialEnd + deltaValue > start.value) {
+          end.value = Math.max(0, Math.min(initialEnd + deltaValue, videoDuration.value));
+        } else if (type === 'range') {
+          const newStart = Math.max(0, Math.min(initialStart + deltaValue, videoDuration.value - rangeWidth));
+          const newEnd = newStart + rangeWidth;
+          if (newEnd <= videoDuration.value) {
+            start.value = newStart;
+            end.value = newEnd;
+          }
         }
       };
 
@@ -185,10 +205,19 @@ h2 {
   background-color: #444;
 }
 
+.marker {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background-color: #ccc;
+}
+
 .range {
   position: absolute;
   height: 100%;
   background-color: #888;
+  cursor: move;
 }
 
 .thumb {
