@@ -1,103 +1,131 @@
 <template>
   <div class="advanced-options">
     <div class="header" @click="isCollapsed = !isCollapsed">
-      <h2>Advanced Options</h2>
+      <h2 class="unselectable">Advanced Options</h2>
       <i :class="['arrow', isCollapsed ? 'down' : 'up']"></i>
     </div>
     <div class="content" v-show="!isCollapsed">
-      <div class="option-grid">
-        <div class="option-group">
-          <label for="start-time">Start Time</label>
-          <div class="time-select">
-            <select v-model="options.startTimeMinutes">
-              <option v-for="minute in maxMinutes" :key="minute" :value="minute">{{ formatTime(minute) }}</option>
-            </select>
-            <span>:</span>
-            <select v-model="options.startTimeSeconds">
-              <option v-for="second in 60" :key="second" :value="second">{{ formatTime(second) }}</option>
-            </select>
+      <div class="slider-container">
+        <div class="slider" ref="slider">
+          <div class="track"></div>
+          <div class="range" :style="{ left: `${startPercent}%`, width: `${endPercent - startPercent}%` }"></div>
+          <div class="thumb start-thumb" :style="{ left: `${startPercent}%` }" @mousedown="startMove($event, 'start')">
           </div>
-          <p class="description">Start time in minutes:seconds (default: 00:00)</p>
+          <div class="thumb end-thumb" :style="{ left: `${endPercent}%` }" @mousedown="startMove($event, 'end')"></div>
         </div>
-        <div class="option-group">
-          <label for="duration">Duration</label>
-          <div class="time-select">
-            <select v-model="options.durationMinutes">
-              <option v-for="minute in maxMinutes" :key="minute" :value="minute">{{ formatTime(minute) }}</option>
-            </select>
-            <span>:</span>
-            <select v-model="options.durationSeconds">
-              <option v-for="second in 60" :key="second" :value="second">{{ formatTime(second) }}</option>
-            </select>
-          </div>
-          <p class="description">Duration in minutes:seconds (default: 00:00)</p>
+        <div class="timestamps">
+          <span v-for="minute in maxMinutes" :key="minute" class="timestamp unselectable">
+            {{ formatTime(minute * 60) }}
+          </span>
         </div>
       </div>
+      <p class="description unselectable">Start: {{ formatTime(start) }} | End: {{ formatTime(end) }}</p>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 
 export default {
   name: 'AdvancedOptions',
-  setup(props, { emit }) {
+  setup(props, { emit, expose }) {
     const isCollapsed = ref(false);
-    const options = ref({
-      startTimeMinutes: 0,
-      startTimeSeconds: 0,
-      durationMinutes: 0,
-      durationSeconds: 0,
-    });
-
-    const videoDuration = ref(parseInt(sessionStorage.getItem('videoDuration')) || 0);
+    const start = ref(0);
+    const end = ref(parseInt(sessionStorage.getItem('videoDuration')) || 600);
+    const videoDuration = ref(end.value);
 
     const maxMinutes = computed(() => Math.floor(videoDuration.value / 60));
 
-    const emitOptions = () => {
-      emit('update:options', options.value);
-      saveOptionsToSession();
-    };
+    const startPercent = computed(() => (start.value / videoDuration.value) * 100);
+    const endPercent = computed(() => (end.value / videoDuration.value) * 100);
 
-    const saveOptionsToSession = () => {
-      sessionStorage.setItem('startTimeMinutes', options.value.startTimeMinutes);
-      sessionStorage.setItem('startTimeSeconds', options.value.startTimeSeconds);
-      sessionStorage.setItem('durationMinutes', options.value.durationMinutes);
-      sessionStorage.setItem('durationSeconds', options.value.durationSeconds);
+    const updateOptions = () => {
+      const startTimeMinutes = Math.floor(start.value / 60);
+      const startTimeSeconds = Math.round(start.value % 60);
+      const durationSeconds = end.value - start.value;
+      const durationMinutes = Math.floor(durationSeconds / 60);
+      const durationSecondsRounded = Math.round(durationSeconds % 60);
+
+      sessionStorage.setItem('startTimeMinutes', startTimeMinutes);
+      sessionStorage.setItem('startTimeSeconds', startTimeSeconds);
+      sessionStorage.setItem('durationMinutes', durationMinutes);
+      sessionStorage.setItem('durationSeconds', durationSecondsRounded);
+
+      emit('update:options', {
+        startTimeMinutes,
+        startTimeSeconds,
+        durationMinutes,
+        durationSeconds: durationSecondsRounded
+      });
     };
 
     const loadOptionsFromSession = () => {
-      options.value.startTimeMinutes = parseInt(sessionStorage.getItem('startTimeMinutes')) || 0;
-      options.value.startTimeSeconds = parseInt(sessionStorage.getItem('startTimeSeconds')) || 0;
-      options.value.durationMinutes = parseInt(sessionStorage.getItem('durationMinutes')) || 0;
-      options.value.durationSeconds = parseInt(sessionStorage.getItem('durationSeconds')) || 0;
+      const startTimeMinutes = parseInt(sessionStorage.getItem('startTimeMinutes')) || 0;
+      const startTimeSeconds = parseInt(sessionStorage.getItem('startTimeSeconds')) || 0;
+      const durationMinutes = parseInt(sessionStorage.getItem('durationMinutes')) || 0;
+      const durationSeconds = parseInt(sessionStorage.getItem('durationSeconds')) || 0;
+
+      start.value = startTimeMinutes * 60 + startTimeSeconds;
+      end.value = start.value + durationMinutes * 60 + durationSeconds;
     };
 
-    const formatTime = (value) => {
-      return value.toString().padStart(2, '0');
+    const formatTime = (seconds) => {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.round(seconds % 60);
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const startMove = (event, type) => {
+      const slider = event.target.closest('.slider');
+      const onMouseMove = (e) => {
+        const rect = slider.getBoundingClientRect();
+        const percent = ((e.clientX - rect.left) / rect.width) * 100;
+        const newValue = ((percent / 100) * videoDuration.value);
+
+        if (type === 'start' && newValue < end.value) {
+          start.value = Math.max(0, Math.min(newValue, videoDuration.value));
+        } else if (type === 'end' && newValue > start.value) {
+          end.value = Math.max(0, Math.min(newValue, videoDuration.value));
+        }
+      };
+
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        updateOptions();
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
     };
 
     onMounted(() => {
       loadOptionsFromSession();
     });
 
-    onUnmounted(() => {
-      saveOptionsToSession();
-    });
+    expose({ reload: loadOptionsFromSession });
 
     return {
       isCollapsed,
-      options,
-      emitOptions,
-      formatTime,
+      start,
+      end,
+      videoDuration,
       maxMinutes,
+      startPercent,
+      endPercent,
+      startMove,
+      formatTime,
     };
-  },
+  }
 };
 </script>
 
 <style scoped>
+.unselectable {
+  user-select: none;
+}
+
 .advanced-options {
   width: 100%;
   padding: 2rem;
@@ -137,55 +165,73 @@ h2 {
   margin-top: 1rem;
 }
 
-.option-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 2rem;
-}
-
-.option-group {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-label {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #e0e0e0;
-  margin-bottom: 0.5rem;
-}
-
-select {
-  padding: 0.75rem;
-  border-radius: 10px;
-  background-color: #444444;
-  color: #e0e0e0;
-  border: 1px solid #555555;
-  font-size: 1rem;
+.slider-container {
+  position: relative;
   width: 100%;
-  transition: all 0.3s ease;
+  margin: 1rem 0;
 }
 
-select:focus {
-  outline: none;
-  background-color: #555555;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+.slider {
+  position: relative;
+  width: 100%;
+  height: 12px;
+  background-color: #444;
+}
+
+.track {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: #444;
+}
+
+.range {
+  position: absolute;
+  height: 100%;
+  background-color: #888;
+}
+
+.thumb {
+  position: absolute;
+  top: -4px;
+  width: 4px;
+  height: 20px;
+  background-color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.thumb:hover {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.start-thumb {
+  background-color: rgba(76, 175, 80, 0.8);
+  cursor: ew-resize;
+}
+
+.end-thumb {
+  background-color: rgba(244, 67, 54, 0.8);
+  cursor: ew-resize;
+}
+
+.timestamps {
+  position: absolute;
+  top: 25px;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.timestamp {
+  font-size: 0.8rem;
+  color: #e0e0e0;
 }
 
 .description {
   font-size: 0.9rem;
   color: #b0b0b0;
   margin-top: 0.25rem;
-}
-
-.time-select {
-  display: flex;
-  align-items: center;
-}
-
-.time-select select {
-  width: auto;
-  margin: 0 0.5rem;
 }
 </style>

@@ -6,7 +6,8 @@
     </header>
     <main>
       <div class="upload-area" @dragover.prevent @drop.prevent="handleFileDrop" @click="triggerFileInput">
-        <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*, video/*" style="display: none;" />
+        <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*, video/*"
+          style="display: none;" />
         <div v-if="!previewUrl" class="upload-prompt">
           <i class="fas fa-cloud-upload-alt"></i>
           <p>Drag & Drop or Click to Upload</p>
@@ -37,7 +38,7 @@
             </select>
           </div>
         </div>
-        <AdvancedOptions v-model:options="advancedOptions" />
+        <AdvancedOptions ref="advancedOptionsRef" v-model:options="advancedOptions" />
         <div v-if="isProcessing" class="progress-bar">
           <div class="progress" :style="{ width: `${progress}%` }"></div>
           <span class="progress-text">{{ progress }}%</span>
@@ -89,6 +90,7 @@ const availableModels = ref([]);
 const intervalId = ref(null);
 
 const canProcess = computed(() => selectedAiTool.value !== '' && previewUrl.value !== '');
+const advancedOptionsRef = ref(null);
 
 async function loadModels() {
   const { models } = await aiModels.getInstalledModels();
@@ -115,7 +117,7 @@ function handleFileDrop(event) {
   handleFileUploadGeneric(file);
 }
 
-function handleFileUploadGeneric(file){
+function handleFileUploadGeneric(file) {
   if (file) {
     filePath.value = file.path;
     previewUrl.value = URL.createObjectURL(file);
@@ -127,27 +129,23 @@ function handleFileUploadGeneric(file){
     sessionStorage.setItem('previewUrl', previewUrl.value);
     sessionStorage.setItem('fileType', fileType.value);
 
-    if(fileType.value === 'video'){
+    if (fileType.value === 'video') {
       const video = document.createElement('video');
       video.src = previewUrl.value;
-      video.load();
       video.onloadedmetadata = () => {
         videoDuration.value = video.duration;
-      }
+        // Save to sessionStorage
+        sessionStorage.setItem('videoDuration', videoDuration.value);
+
+        console.log('videoDuration:', sessionStorage.getItem('videoDuration'));
+      };
     }
 
-    // Save to sessionStorage
-    sessionStorage.setItem('videoDuration', videoDuration.value);
-
-    console.log('videoDuration:', sessionStorage.getItem('videoDuration'));
-
-    //reload the AdvancedOptions vue component
-    advancedOptions.value = {
-      startTimeMinutes: parseInt(sessionStorage.getItem('startTimeMinutes')) || 0,
-      startTimeSeconds: parseInt(sessionStorage.getItem('startTimeSeconds')) || 0,
-      durationMinutes: parseInt(sessionStorage.getItem('durationMinutes')) || 0,
-      durationSeconds: parseInt(sessionStorage.getItem('durationSeconds')) || 0,
-    };
+    // Reload the AdvancedOptions vue component
+    if(advancedOptionsRef.value){
+      // console.log('advancedOptionsRef:', advancedOptionsRef.value);
+      advancedOptionsRef.value.reload();
+    }
 
   }
 }
