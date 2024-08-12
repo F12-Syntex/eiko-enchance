@@ -5,27 +5,45 @@
       <i :class="['arrow', isCollapsed ? 'down' : 'up']"></i>
     </div>
     <div class="content" v-show="!isCollapsed">
+      <p class="description unselectable">
+        Start: {{ formatTime(start) }} | End: {{ formatTime(end) }}
+      </p>
       <div class="slider-container">
         <div class="slider" ref="slider">
           <div class="track">
-            <div v-for="minute in maxMinutes" :key="minute"
-              :style="{ left: `${(minute * 60 / videoDuration.value) * 100}%` }" class="marker"></div>
+            <div
+              v-for="minute in maxMinutes"
+              :key="minute"
+              :style="{ left: `${(minute * 60 / videoDuration.value) * 100}%` }"
+              class="marker"
+            ></div>
           </div>
-          <div class="range" :style="{ left: `${startPercent}%`, width: `${endPercent - startPercent}%` }"
-            @mousedown="startMove($event, 'range')"></div>
-          <div class="thumb start-thumb" :style="{ left: `${startPercent}%` }" @mousedown="startMove($event, 'start')">
-          </div>
-          <div class="thumb end-thumb" :style="{ left: `${endPercent}%` }" @mousedown="startMove($event, 'end')"></div>
+          <div
+            class="range"
+            :style="{ left: `${startPercent}%`, width: `${endPercent - startPercent}%` }"
+            @mousedown="startMove($event, 'range')"
+          ></div>
+          <div
+            class="thumb start-thumb"
+            :style="{ left: `${startPercent}%` }"
+            @mousedown="startMove($event, 'start')"
+          ></div>
+          <div
+            class="thumb end-thumb"
+            :style="{ left: `${endPercent}%` }"
+            @mousedown="startMove($event, 'end')"
+          ></div>
         </div>
         <div class="timestamps">
-          <span v-for="minute in maxMinutes" :key="minute" class="timestamp unselectable">
+          <span
+            v-for="minute in maxMinutes"
+            :key="minute"
+            class="timestamp unselectable"
+          >
             {{ formatTime(minute * 60) }}
           </span>
         </div>
       </div>
-      <p class="description unselectable">
-        Start: {{ formatTime(start) }} | End: {{ formatTime(end) }}
-      </p>
     </div>
   </div>
 </template>
@@ -37,9 +55,9 @@ export default {
   name: 'AdvancedOptions',
   setup(props, { emit, expose }) {
     const isCollapsed = ref(false);
+    const videoDuration = ref(parseInt(sessionStorage.getItem('videoDuration')) || 600);
     const start = ref(0);
-    const end = ref(parseInt(sessionStorage.getItem('videoDuration')) || 600);
-    const videoDuration = ref(end.value);
+    const end = ref(videoDuration.value);
 
     const maxMinutes = computed(() => Math.floor(videoDuration.value / 60));
 
@@ -72,18 +90,27 @@ export default {
       const durationMinutes = parseInt(sessionStorage.getItem('durationMinutes')) || 0;
       const durationSeconds = parseInt(sessionStorage.getItem('durationSeconds')) || 0;
 
-      start.value = startTimeMinutes * 60 + startTimeSeconds;
-      end.value = start.value + durationMinutes * 60 + durationSeconds;
+      // start.value = startTimeMinutes * 60 + startTimeSeconds;
+      // end.value = Math.min(start.value + durationMinutes * 60 + durationSeconds, videoDuration.value);
+
+      start.value = 0;
+      end.value = videoDuration.value;
+      //set the start slider to the start time
+      //set the end slider to the end time
+
+
+      console.log('Loaded options from session storage:', { startTimeMinutes, startTimeSeconds, durationMinutes, durationSeconds });
     };
 
     const formatTime = (seconds) => {
       const mins = Math.floor(seconds / 60);
       const secs = Math.round(seconds % 60);
-      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      const millis = Math.round((seconds - Math.floor(seconds)) * 1000);
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}:${millis.toString().padStart(3, '0')}`;
     };
 
     const startMove = (event, type) => {
-      event.preventDefault(); // Prevent text selection
+      event.preventDefault();
       const slider = event.target.closest('.slider');
       const rect = slider.getBoundingClientRect();
       const initialPercent = ((event.clientX - rect.left) / rect.width) * 100;
