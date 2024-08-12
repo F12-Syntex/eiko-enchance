@@ -10,11 +10,11 @@
           <label for="start-time">Start Time</label>
           <div class="time-select">
             <select v-model="options.startTimeMinutes">
-              <option v-for="minute in 60" :key="minute" :value="minute - 1">{{ formatTime(minute - 1) }}</option>
+              <option v-for="minute in maxMinutes" :key="minute" :value="minute">{{ formatTime(minute) }}</option>
             </select>
             <span>:</span>
             <select v-model="options.startTimeSeconds">
-              <option v-for="second in 60" :key="second" :value="second - 1">{{ formatTime(second - 1) }}</option>
+              <option v-for="second in 60" :key="second" :value="second">{{ formatTime(second) }}</option>
             </select>
           </div>
           <p class="description">Start time in minutes:seconds (default: 00:00)</p>
@@ -23,11 +23,11 @@
           <label for="duration">Duration</label>
           <div class="time-select">
             <select v-model="options.durationMinutes">
-              <option v-for="minute in 60" :key="minute" :value="minute - 1">{{ formatTime(minute - 1) }}</option>
+              <option v-for="minute in maxMinutes" :key="minute" :value="minute">{{ formatTime(minute) }}</option>
             </select>
             <span>:</span>
             <select v-model="options.durationSeconds">
-              <option v-for="second in 60" :key="second" :value="second - 1">{{ formatTime(second - 1) }}</option>
+              <option v-for="second in 60" :key="second" :value="second">{{ formatTime(second) }}</option>
             </select>
           </div>
           <p class="description">Duration in minutes:seconds (default: 00:00)</p>
@@ -38,7 +38,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 
 export default {
   name: 'AdvancedOptions',
@@ -50,6 +50,10 @@ export default {
       durationMinutes: 0,
       durationSeconds: 0,
     });
+
+    const videoDuration = ref(parseInt(sessionStorage.getItem('videoDuration')) || 0);
+
+    const maxMinutes = computed(() => Math.floor(videoDuration.value / 60));
 
     const emitOptions = () => {
       emit('update:options', options.value);
@@ -87,6 +91,7 @@ export default {
       options,
       emitOptions,
       formatTime,
+      maxMinutes,
     };
   },
 };

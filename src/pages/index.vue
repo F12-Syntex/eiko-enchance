@@ -83,6 +83,8 @@ const isProcessing = ref(false);
 const progress = ref(0);
 const processedImageUrl = ref('');
 
+const videoDuration = ref(0);
+
 const availableModels = ref([]);
 const intervalId = ref(null);
 
@@ -105,21 +107,15 @@ function triggerFileInput() {
 
 function handleFileUpload(event) {
   const file = event.target.files[0];
-  if (file) {
-    filePath.value = file.path;
-    previewUrl.value = URL.createObjectURL(file);
-    fileType.value = file.type.startsWith('image') ? 'image' : 'video';
-    processedImageUrl.value = ''; // Reset processed image when new file is uploaded
-
-    // Save to sessionStorage
-    sessionStorage.setItem('filePath', filePath.value);
-    sessionStorage.setItem('previewUrl', previewUrl.value);
-    sessionStorage.setItem('fileType', fileType.value);
-  }
+  handleFileUploadGeneric(file);
 }
 
 function handleFileDrop(event) {
   const file = event.dataTransfer.files[0];
+  handleFileUploadGeneric(file);
+}
+
+function handleFileUploadGeneric(file){
   if (file) {
     filePath.value = file.path;
     previewUrl.value = URL.createObjectURL(file);
@@ -130,6 +126,29 @@ function handleFileDrop(event) {
     sessionStorage.setItem('filePath', filePath.value);
     sessionStorage.setItem('previewUrl', previewUrl.value);
     sessionStorage.setItem('fileType', fileType.value);
+
+    if(fileType.value === 'video'){
+      const video = document.createElement('video');
+      video.src = previewUrl.value;
+      video.load();
+      video.onloadedmetadata = () => {
+        videoDuration.value = video.duration;
+      }
+    }
+
+    // Save to sessionStorage
+    sessionStorage.setItem('videoDuration', videoDuration.value);
+
+    console.log('videoDuration:', sessionStorage.getItem('videoDuration'));
+
+    //reload the AdvancedOptions vue component
+    advancedOptions.value = {
+      startTimeMinutes: parseInt(sessionStorage.getItem('startTimeMinutes')) || 0,
+      startTimeSeconds: parseInt(sessionStorage.getItem('startTimeSeconds')) || 0,
+      durationMinutes: parseInt(sessionStorage.getItem('durationMinutes')) || 0,
+      durationSeconds: parseInt(sessionStorage.getItem('durationSeconds')) || 0,
+    };
+
   }
 }
 
