@@ -36,6 +36,18 @@
               <span class="link-text">Settings</span>
             </NuxtLink>
           </li>
+          <li :class="{ selected: currentPage === 'video-creation' }">
+            <NuxtLink to="/VideoCreator" @click="navigate('video-creation')" class="nav-link">
+              <span class="icon-container">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-video">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                  <polygon points="7 8 12 12 17 8"></polygon>
+                </svg>
+              </span>
+              <span class="link-text">Video Creation</span>
+            </NuxtLink>
+          </li>
           <li :class="{ selected: currentPage === 'ai-models' }">
             <NuxtLink to="/ai-models" @click="navigate('ai-models')" class="nav-link">
               <span class="icon-container">
