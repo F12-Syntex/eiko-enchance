@@ -21,14 +21,17 @@
       <div class="controls">
         <div class="control-group">
           <div class="scale-control">
-            <label for="scale-ratio">Upscale Factor</label>
+            <label for="scale-ratio">Upscaled resolution</label>
             <div class="scale-slider">
               <input type="range" id="scale-ratio" min="1" max="4" step="1" v-model="scaleRatio" />
               <div class="scale-labels">
-                <span v-for="n in 4" :key="n">{{ n }}x</span>
+                <span>720p</span>
+                <span>1080p</span>
+                <span>1440p</span>
+                <span>4K</span>
               </div>
             </div>
-            <span class="scale-value">{{ scaleRatio }}x</span>
+            <span class="scale-value">{{ getResolutionLabel(scaleRatio) }}</span>
           </div>
           <div class="ai-model-control">
             <label for="ai-model">AI Model</label>
@@ -92,6 +95,25 @@ const intervalId = ref(null);
 const canProcess = computed(() => selectedAiTool.value !== '' && previewUrl.value !== '');
 const advancedOptionsRef = ref(null);
 
+function getResolutionLabel(scaleRatio) {
+  switch (parseInt(scaleRatio)) {
+    case 1: return '720p';
+    case 2: return '1080p';
+    case 3: return '1440p';
+    case 4: return '4K';
+    default: return 'N/A';
+  }
+}
+function getAbsoluteResolutionLabel(scaleRatio) {
+  switch (parseInt(scaleRatio)) {
+    case 1: return '1280:720';
+    case 2: return '1920:1080';
+    case 3: return '2560:1440';
+    case 4: return '3840:2160';
+    default: return 'N/A';
+  }
+}
+
 async function loadModels() {
   const { models } = await aiModels.getInstalledModels();
   availableModels.value = models.filter((model) => model.usable && model.installed);
@@ -142,7 +164,7 @@ function handleFileUploadGeneric(file) {
     }
 
     // Reload the AdvancedOptions vue component
-    if(advancedOptionsRef.value){
+    if (advancedOptionsRef.value) {
       // console.log('advancedOptionsRef:', advancedOptionsRef.value);
       advancedOptionsRef.value.reload();
     }
@@ -176,6 +198,7 @@ async function processImage() {
     cacheDir: cacheDir,
     aiModel: modelInfo,
     advancedOptions: advancedOptions.value,
+    scaleRatio: getAbsoluteResolutionLabel(scaleRatio.value)
   };
 
   console.log('Processing file:', request);
@@ -278,7 +301,7 @@ onUnmounted(() => {
 .app-container {
   font-family: 'Poppins', sans-serif;
   color: #e0e0e0;
-  max-height: 100vh;
+  max-height: 95vh;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -311,8 +334,8 @@ main {
   align-items: center;
   gap: 2rem;
   flex-grow: 1;
-  overflow: auto;
   width: 100%;
+  height: 100%;
 }
 
 .upload-area {

@@ -11,53 +11,43 @@
       <div class="slider-container">
         <div class="slider" ref="slider">
           <div class="track">
-            <div
-              v-for="minute in maxMinutes"
-              :key="minute"
-              :style="{ left: `${(minute * 60 / videoDuration.value) * 100}%` }"
-              class="marker"
-            ></div>
+            <div v-for="minute in maxMinutes" :key="minute"
+              :style="{ left: `${(minute * 60 / videoDuration.value) * 100}%` }" class="marker"></div>
           </div>
-          <div
-            class="range"
-            :style="{ left: `${startPercent}%`, width: `${endPercent - startPercent}%` }"
-            @mousedown="startMove($event, 'range')"
-          ></div>
-          <div
-            class="thumb start-thumb"
-            :style="{ left: `${startPercent}%` }"
-            @mousedown="startMove($event, 'start')"
-          ></div>
-          <div
-            class="thumb end-thumb"
-            :style="{ left: `${endPercent}%` }"
-            @mousedown="startMove($event, 'end')"
-          ></div>
+          <div class="range" :style="{ left: `${startPercent}%`, width: `${endPercent - startPercent}%` }"
+            @mousedown="startMove($event, 'range')"></div>
+          <div class="thumb start-thumb" :style="{ left: `${startPercent}%` }" @mousedown="startMove($event, 'start')">
+          </div>
+          <div class="thumb end-thumb" :style="{ left: `${endPercent}%` }" @mousedown="startMove($event, 'end')"></div>
         </div>
-        <div class="timestamps">
-          <span
-            v-for="minute in maxMinutes"
-            :key="minute"
-            class="timestamp unselectable"
-          >
-            {{ formatTime(minute * 60) }}
-          </span>
-        </div>
+      </div>
+      <div v-for="option in options" :key="option.name" class="option-container">
+        <label :for="option.name">{{ option.label }}</label>
+        <input :id="option.name" :type="option.type" v-model="optionValues[option.name]" @change="updateOptionValue(option.name)">
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, reactive } from 'vue';
 
 export default {
   name: 'AdvancedOptions',
   setup(props, { emit, expose }) {
     const isCollapsed = ref(false);
-    const videoDuration = ref(parseInt(sessionStorage.getItem('videoDuration')) || 600);
+    const videoDuration = ref(parseInt(sessionStorage.getItem('videoDuration')) || 10);
     const start = ref(0);
     const end = ref(videoDuration.value);
+
+    const options = [
+      { name: 'quality', label: 'Quality', type: 'number' },
+      { name: 'framerate', label: 'Frame Rate', type: 'number' },
+      { name: 'resolution', label: 'Resolution', type: 'text' },
+      { name: 'format', label: 'Format', type: 'text' },
+    ];
+
+    const optionValues = reactive({});
 
     const maxMinutes = computed(() => Math.floor(videoDuration.value / 60));
 
@@ -80,26 +70,50 @@ export default {
         startTimeMinutes,
         startTimeSeconds,
         durationMinutes,
-        durationSeconds: durationSecondsRounded
+        durationSeconds: durationSecondsRounded,
+        ...optionValues
       });
+    };
+
+    const updateOptionValue = (optionName) => {
+      sessionStorage.setItem(optionName, optionValues[optionName]);
+      updateOptions();
     };
 
     const loadOptionsFromSession = () => {
       const startTimeMinutes = parseInt(sessionStorage.getItem('startTimeMinutes')) || 0;
       const startTimeSeconds = parseInt(sessionStorage.getItem('startTimeSeconds')) || 0;
-      const durationMinutes = parseInt(sessionStorage.getItem('durationMinutes')) || 0;
-      const durationSeconds = parseInt(sessionStorage.getItem('durationSeconds')) || 0;
-
-      // start.value = startTimeMinutes * 60 + startTimeSeconds;
-      // end.value = Math.min(start.value + durationMinutes * 60 + durationSeconds, videoDuration.value);
+      const durationMinutes = parseInt(sessionStorage.getItem('durationMinutes')) || 10;
+      const durationSeconds = parseInt(sessionStorage.getItem('durationSeconds')) || 10;
 
       start.value = 0;
       end.value = videoDuration.value;
-      //set the start slider to the start time
-      //set the end slider to the end time
 
+      options.forEach(option => {
+        const value = sessionStorage.getItem(option.name);
+        if (value !== null) {
+          optionValues[option.name] = value;
+        }
+      });
 
-      console.log('Loaded options from session storage:', { startTimeMinutes, startTimeSeconds, durationMinutes, durationSeconds });
+      emit('update:options', {
+        startTimeMinutes,
+        startTimeSeconds,
+        durationMinutes,
+        durationSeconds: durationSeconds,
+        ...optionValues
+      });
+
+      console.log('Loaded options from session storage:', { startTimeMinutes, startTimeSeconds, durationMinutes, durationSeconds, ...optionValues });
+    };
+
+    const reload = () => {
+      const newDuration = parseInt(sessionStorage.getItem('videoDuration')) || 10;
+      videoDuration.value = newDuration;
+      start.value = 0;
+      end.value = newDuration;
+      loadOptionsFromSession();
+      updateOptions();
     };
 
     const formatTime = (seconds) => {
@@ -151,7 +165,7 @@ export default {
       loadOptionsFromSession();
     });
 
-    expose({ reload: loadOptionsFromSession });
+    expose({ reload: reload });
 
     return {
       isCollapsed,
@@ -163,6 +177,9 @@ export default {
       endPercent,
       startMove,
       formatTime,
+      options,
+      optionValues,
+      updateOptionValue
     };
   }
 };
@@ -271,23 +288,28 @@ h2 {
   cursor: ew-resize;
 }
 
-.timestamps {
-  position: absolute;
-  top: 25px;
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  pointer-events: none;
-}
-
-.timestamp {
-  font-size: 0.8rem;
-  color: #e0e0e0;
-}
-
 .description {
   font-size: 0.9rem;
   color: #b0b0b0;
   margin-top: 0.25rem;
+}
+
+.option-container {
+  margin-top: 1rem;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #ffffff;
+}
+
+input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #444;
+  background-color: #333;
+  color: #ffffff;
+  border-radius: 4px;
 }
 </style>

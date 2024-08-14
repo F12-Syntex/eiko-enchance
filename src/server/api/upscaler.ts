@@ -31,16 +31,15 @@ function upscaleImage(modelInfo: Model, scaleRatio: number, exportFilePath: stri
   const fileName = path.basename(sourceFile)
   const outputFile = path.join(exportFilePath, `upscaled_${Math.floor(Math.random() * 1000)}_${fileName}`)
 
-  let command = `${executable} -i ${sourceFile} -o ${outputFile} -n ${modelName}`
-  if (scaleRatio > 1 && scaleRatio < 5) {
-    command += ` -s ${scaleRatio}`
-  }
+  let command = `${executable} -i ${sourceFile} -o ${outputFile} -n ${modelName} scale=${scaleRatio}`
 
   return executeCommand(command, outputFile)
 }
 
-function upscaleVideo(modelInfo: Model, scaleRatio: number, exportFilePath: string, cacheDir: string, sourceFile: string, advcancedOptions: any) {
+function upscaleVideo(modelInfo: Model, scaleRatio: any, exportFilePath: string, cacheDir: string, sourceFile: string, advcancedOptions: any) {
   console.log('Upscaling video')
+
+  console.log('scaleRatio', scaleRatio)
 
   const configuration = UpscaleData.fromJson(advcancedOptions)
 
@@ -82,7 +81,7 @@ function upscaleVideo(modelInfo: Model, scaleRatio: number, exportFilePath: stri
 
     return upscaleVideoFrames(outputDir, modelInfo, scaleRatio, upscaledFramesDir, cacheDir, totalFrames, frameRate).then(() => {
       const outputVideoPath = path.join(exportFilePath, `${fileName}_upscaled(${randomConstant}).mp4`)
-      return createVideoFromFramesWithAudio(ffmpegPath, upscaledFramesDir, audioPath, outputVideoPath, frameRate)
+      return createVideoFromFramesWithAudio(ffmpegPath, outputDir, upscaledFramesDir, audioPath, outputVideoPath, frameRate, scaleRatio)
     })
   })
 }
@@ -96,9 +95,17 @@ async function getFrameRate(ffmpegPath: string, sourceFile: string): Promise<num
   return fps
 }
 
-function createVideoFromFramesWithAudio(ffmpegPath: string, outputDir: string, audioPath: string, exportFilePath: string, frameRate: number) {
-  const command = `${ffmpegPath} -framerate ${frameRate} -i ${outputDir}\\%04d.png -i "${audioPath}" -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -threads 0 -stats -progress pipe:1 ${exportFilePath}`
-  return executeCommand(command, exportFilePath)
+function createVideoFromFramesWithAudio(ffmpegPath: string, originalFile: string, outputDir: string, audioPath: string, exportFilePath: string, frameRate: number, scaleRatio: any) {
+  // const command = `${ffmpegPath} -framerate ${frameRate} -i ${outputDir}\\%04d.png -i "${audioPath}" -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -shortest -stats -progress pipe:1 ${exportFilePath}`
+  //make the scale 2x
+  const upscaledScript = `${ffmpegPath} -framerate ${frameRate} -i ${outputDir}\\%04d.png -i "${audioPath}" -c:v libx264 -profile:v high -crf 20 -vf scale=${scaleRatio} -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -stats -progress pipe:1 ${exportFilePath}`
+  // const originalScript = `${ffmpegPath} -framerate ${frameRate} -i ${outputDir}\\%04d.png -i "${audioPath}" -c:v libx264 -profile:v high -crf 20 -vf scale=2560:1440 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -stats -progress pipe:1 ${exportFilePath}`
+
+  // console.log('upscaledScript', upscaledScript)
+  // console.log('originalScript', originalScript)
+
+  // upscaleVideoScript(originalScript)
+  return executeCommand(upscaledScript, exportFilePath)
 }
 
 function getTotalFrames(dir: string): number {
@@ -117,6 +124,10 @@ function upscaleVideoScript(command: string) {
       } else {
         reject(new Error(`Process exited with code ${code}`))
       }
+    })
+
+    process.stderr?.on('data', (data: string) => {
+      console.log(data)
     })
 
     process.on('error', (error) => {
@@ -183,7 +194,7 @@ function createVideoFromFrames(ffmpegPath: string, outputDir: string, exportFile
 function upscaleVideoFrames(outputDir: string, modelInfo: Model, scaleRatio: number, exportFilePath: string, cacheDir: string, totalFrames: number, frameRate: number) {
   const modelName = modelInfo.name.split('.bin')[0]
   const executable = path.join(os.homedir(), 'Documents', 'eiko', 'models', modelInfo.execusionScriptPath)
-  const command = `${executable} -i ${outputDir} -o ${exportFilePath} -n ${modelName} fps=${frameRate}`
+  const command = `${executable} -i ${outputDir} -o ${exportFilePath} -n ${modelName} fps=${frameRate} scale=${scaleRatio}`
 
   return new Promise((resolve, reject) => {
     const process = exec(command)
