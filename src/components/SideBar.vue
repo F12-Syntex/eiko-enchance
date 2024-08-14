@@ -4,10 +4,11 @@
     <header class="header">
       <nav>
         <ul>
-          <li :class="{ selected: currentPage === 'upscale' }">
+          <li :class="{ selected: (currentPage === 'upscale' || currentPage === 'home') }">
             <NuxtLink to="/" @click="navigate('upscale')" class="nav-link">
               <span class="icon-container">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-image">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-image">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                   <circle cx="8.5" cy="8.5" r="1.5"></circle>
                   <polyline points="21 15 16 10 5 21"></polyline>
@@ -19,7 +20,8 @@
           <li :class="{ selected: currentPage === 'settings' }">
             <NuxtLink to="/settings" @click="navigate('settings')" class="nav-link">
               <span class="icon-container">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sliders">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sliders">
                   <line x1="4" y1="21" x2="4" y2="14"></line>
                   <line x1="4" y1="10" x2="4" y2="3"></line>
                   <line x1="12" y1="21" x2="12" y2="12"></line>
@@ -37,8 +39,11 @@
           <li :class="{ selected: currentPage === 'ai-models' }">
             <NuxtLink to="/ai-models" @click="navigate('ai-models')" class="nav-link">
               <span class="icon-container">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-box">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-box">
+                  <path
+                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                  </path>
                   <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
                   <line x1="12" y1="22.08" x2="12" y2="12"></line>
                 </svg>
@@ -49,7 +54,8 @@
           <li :class="{ selected: currentPage === 'library' }">
             <NuxtLink to="/library" @click="navigate('library')" class="nav-link">
               <span class="icon-container">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder">
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                 </svg>
               </span>
@@ -97,6 +103,15 @@ function stopResizing() {
   document.removeEventListener('mousemove', resize);
   document.removeEventListener('mouseup', stopResizing);
 }
+
+onMounted(() => {
+  if (window.innerWidth < 1000) {
+    isCollapsed.value = true;
+  }
+  //print the current page
+  console.log(currentPage.value);
+});
+
 </script>
 
 <style scoped>
@@ -204,6 +219,10 @@ nav ul li {
   transition: opacity 0.3s ease;
 }
 
+.nav-link {
+  width: 90%;
+}
+
 .nav-link:hover {
   background-color: #1d1d1d;
   transform: translateX(5px);
@@ -222,6 +241,7 @@ nav ul li {
   background-color: #1d1d1d;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transform: translateX(10px);
+  width: 90%;
 }
 
 .selected .icon-container {
