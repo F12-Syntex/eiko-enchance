@@ -28,10 +28,6 @@ import { onMounted, onUnmounted } from 'vue';
 onMounted(() => {
   console.log('Component mounted');
 });
-
-onUnmounted(() => {
-  clearInterval(intervalId.value);
-});
 </script>
 
 <style scoped>
