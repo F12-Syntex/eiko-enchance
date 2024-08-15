@@ -1,22 +1,25 @@
 <template>
   <div class="app-container">
     <main>
-      <div class="upload-area" @dragover.prevent @drop.prevent="handleFileDrop" @click="triggerFileInput">
-        <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*, video/*"
-          style="display: none;" />
-        <div v-if="!previewUrl" class="upload-prompt">
-          <i class="fas fa-cloud-upload-alt"></i>
-          <p>Drag & Drop or Click to Upload </p>
-          <p class="file-types">Supported: JPG, PNG, GIF, MP4, WebM</p>
+      <div class="video-panel">
+        <div class="image-preview">
         </div>
-        <div v-else class="preview-container">
-          <img v-if="fileType === 'image'" :src="previewUrl" alt="Preview" />
-          <video v-else-if="fileType === 'video'" :src="previewUrl" controls></video>
+        <div class="upload-area" @dragover.prevent @drop.prevent="handleFileDrop" @click="triggerFileInput">
+          <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*, video/*"
+            style="display: none;" />
+          <div class="upload-prompt">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p>Drag & Drop or Click to Upload </p>
+            <p class="file-types">Supported: JPG, PNG, GIF, MP4, WebM</p>
+          </div>
         </div>
       </div>
       <div class="controls">
+        <div class="audio-display">
+
+        </div>
       </div>
-    </main>
+      </main>
   </div>
 </template>
 
@@ -35,13 +38,61 @@ onUnmounted(() => {
 .app-container {
   font-family: 'Poppins', sans-serif;
   color: #e0e0e0;
+
   max-height: 95vh;
+  height: 95vh;
   width: 100%;
+
+
   display: flex;
   flex-direction: column;
-  padding: 2rem;
+  
   box-sizing: border-box;
   overflow-y: auto;
+}
+
+.video-panel {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2rem;
+  
+  width: 100%;
+}
+
+.audio-display {
+  display: flex;
+  flex-direction: column;
+
+  width: 100%;
+  height: 125px;
+  border-radius: 10px;
+  
+  border: 1px solid #4a4a4a;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+
+  overflow: hidden;
+
+}
+
+
+.image-preview {
+  height: 100%;
+  width: 40%;
+  max-width: 400px;
+  min-width: 300px;
+  
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #4a4a4a;
 }
 
 header {
@@ -127,13 +178,6 @@ main {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.controls {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  width: 100%;
-  max-width: 80%;
-}
 
 .control-group {
   display: flex;
