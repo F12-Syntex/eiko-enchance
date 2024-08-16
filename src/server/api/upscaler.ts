@@ -23,6 +23,12 @@ async function upscale(event: H3Event, modelInfo: Model, scaleRatio: number, exp
   return { message: 'Unsupported file type' }
 }
 
+async function createVideoFromPathAndAudio(ffmpegPath: string, outputDir: string, audioPath: string, inputFolderPath: string, frameRate: number) {
+  const command = `${ffmpegPath} -framerate ${frameRate} -i ${inputFolderPath}\\%04d.png -i "${audioPath}" -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -stats -progress pipe:1 ${outputDir}`
+  return executeCommand(command, outputDir)
+}
+
+
 function upscaleImage(modelInfo: Model, scaleRatio: number, exportFilePath: string, sourceFile: string) {
   const documentsPath = path.join(os.homedir(), 'Documents')
   const modelsDir = path.join(documentsPath, 'eiko', 'models')
