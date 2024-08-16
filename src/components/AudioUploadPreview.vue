@@ -90,7 +90,7 @@ const processAudioFile = (file) => {
       audio.onloadedmetadata = () => {
         duration.value = audio.duration;
         //save the audio file to the session
-        sessionStorage.setItem('video-creation-audio', audioUrl.value);
+        sessionStorage.setItem('video-creation-audio', file.path);
       };
       audio.onerror = (e) => {
         errorMessage.value = `Error loading audio: ${e.target.error.message}`;

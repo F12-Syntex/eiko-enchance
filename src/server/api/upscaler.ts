@@ -23,11 +23,36 @@ async function upscale(event: H3Event, modelInfo: Model, scaleRatio: number, exp
   return { message: 'Unsupported file type' }
 }
 
-async function createVideoFromPathAndAudio(ffmpegPath: string, outputDir: string, audioPath: string, inputFolderPath: string, frameRate: number) {
-  const command = `${ffmpegPath} -framerate ${frameRate} -i ${inputFolderPath}\\%04d.png -i "${audioPath}" -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -stats -progress pipe:1 ${outputDir}`
-  return executeCommand(command, outputDir)
-}
+async function createVideoFromPathAndAudio(data: any) {
+  // const data = {
+  //   audio,
+  //   imageParentFolder,
+  //   settings: {
+  //     fps: fps.value,
+  //     resolution: resolution.value,
+  //     bitrate: bitrate.value,
+  //     codec: codec.value,
+  //     preset: preset.value,
+  //     audioCodec: audioCodec.value,
+  //     audioBitrate: audioBitrate.value,
+  //     format: format.value
+  //   }
+  // };
 
+  const modelsPath = path.join(os.homedir(), 'Documents', 'eiko', 'models')
+  const ffmpegPath = findExecutable(modelsPath, 'ffmpeg.exe')
+
+  const outputFolder = path.dirname(data.imageParentFolder)
+  const outputFile = path.join(outputFolder, 'output.mp4')
+
+  const command = `${ffmpegPath} -framerate ${data.settings.fps} -i ${data.imageParentFolder}\\%04d.png -i "${data.audio}" -c:v ${data.settings.codec} -profile:v high -crf ${data.settings.bitrate} -vf scale=${data.settings.resolution} -pix_fmt yuv420p -c:a ${data.settings.audioCodec} -b:a ${data.settings.audioBitrate} -shortest -stats -progress pipe:1 ${outputFile}`
+
+  console.log('outputFile', outputFile)
+  console.log('command', command)
+  console.log('data', data)
+
+  return executeCommand(command, outputFile, true)
+}
 
 function upscaleImage(modelInfo: Model, scaleRatio: number, exportFilePath: string, sourceFile: string) {
   const documentsPath = path.join(os.homedir(), 'Documents')
@@ -101,7 +126,15 @@ async function getFrameRate(ffmpegPath: string, sourceFile: string): Promise<num
   return fps
 }
 
-function createVideoFromFramesWithAudio(ffmpegPath: string, originalFile: string, outputDir: string, audioPath: string, exportFilePath: string, frameRate: number, scaleRatio: any) {
+function createVideoFromFramesWithAudio(
+  ffmpegPath: string,
+  originalFile: string,
+  outputDir: string,
+  audioPath: string,
+  exportFilePath: string,
+  frameRate: number,
+  scaleRatio: any
+) {
   // const command = `${ffmpegPath} -framerate ${frameRate} -i ${outputDir}\\%04d.png -i "${audioPath}" -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -shortest -stats -progress pipe:1 ${exportFilePath}`
   //make the scale 2x
   const upscaledScript = `${ffmpegPath} -framerate ${frameRate} -i ${outputDir}\\%04d.png -i "${audioPath}" -c:v libx264 -profile:v high -crf 20 -vf scale=${scaleRatio} -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -stats -progress pipe:1 ${exportFilePath}`
@@ -243,7 +276,11 @@ export default defineEventHandler(async (event) => {
       const body = await readBody(event)
       return upscale(event, body.aiModel, body.scaleRatio, body.exportFilePath, body.cacheDir, body.sourceFile, body.advancedOptions)
     },
-    getProgress: getProgress
+    getProgress: getProgress,
+    createVideoFromPathAndAudio: async () => {
+      const body = await readBody(event)
+      return createVideoFromPathAndAudio(body)
+    }
   }
 
   if (methodName && methodName in methodMap) {
