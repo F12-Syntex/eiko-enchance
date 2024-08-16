@@ -91,9 +91,11 @@ const processFiles = (files) => {
 const processImageEntries = (entries) => {
   Promise.all(entries.map(entry => new Promise((resolve) => {
     entry.file(file => {
-      resolve({ file, url: URL.createObjectURL(file), alt: file.name });
+      resolve({ file, url: URL.createObjectURL(file), alt: file.name, path: file.path});
     });
   }))).then(imageData => {
+    //save to session storage
+    sessionStorage.setItem('video-creation-images', JSON.stringify(imageData));
     emit('update:images', imageData);
   });
 };
@@ -104,6 +106,9 @@ const processImageFiles = (files) => {
     url: URL.createObjectURL(file),
     alt: file.name
   }));
+
+  //store the image data into the session storage
+  sessionStorage.setItem('video-creation-images', JSON.stringify(imageData));
   emit('update:images', imageData);
 };
 

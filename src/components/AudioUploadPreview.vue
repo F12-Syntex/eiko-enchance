@@ -19,7 +19,12 @@
           </div>
         </div>
         <div v-else class="no-audio-message">
-          No audio file selected
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18V5l12-2v13"></path>
+            <circle cx="6" cy="18" r="3"></circle>
+            <circle cx="18" cy="16" r="3"></circle>
+          </svg>
+          <p>No audio file selected</p>
         </div>
       </div>
       <div class="upload-container">
@@ -34,7 +39,7 @@
         >
           <input id="audio-upload" type="file" @change="handleAudioUpload" accept="audio/*" />
           <span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="17 8 12 3 7 8"></polyline>
               <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -47,6 +52,7 @@
     <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
   </div>
 </template>
+
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
@@ -83,6 +89,8 @@ const processAudioFile = (file) => {
       audio.src = audioUrl.value;
       audio.onloadedmetadata = () => {
         duration.value = audio.duration;
+        //save the audio file to the session
+        sessionStorage.setItem('video-creation-audio', audioUrl.value);
       };
       audio.onerror = (e) => {
         errorMessage.value = `Error loading audio: ${e.target.error.message}`;
@@ -188,6 +196,7 @@ onUnmounted(() => {
 });
 </script>
 
+
 <style scoped>
 .audio-display {
   display: flex;
@@ -195,14 +204,16 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   border-radius: 10px;
-  padding: 1rem;
-  gap: 1rem;
-  font-family: Arial, sans-serif;
+  padding: 1.5rem;
+  gap: 1.5rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #1e1e1e;
+  color: #ffffff;
 }
 
 .content-wrapper {
   display: flex;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .audio-player-container {
@@ -210,6 +221,9 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  background-color: #2a2a2a;
+  border-radius: 10px;
+  padding: 1.5rem;
 }
 
 .upload-container {
@@ -226,11 +240,13 @@ onUnmounted(() => {
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.3s ease;
+  background-color: #2a2a2a;
+  padding: 2rem;
 }
 
 .upload-area.dragging {
-  background-color: #f0f0f0;
-  border-color: #2a2a2a;
+  background-color: #3a3a3a;
+  border-color: #6a6a6a;
 }
 
 .upload-area input {
@@ -241,46 +257,53 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: #4a4a4a;
+  color: #b0b0b0;
   text-align: center;
+  font-size: 1rem;
 }
 
 .upload-area svg {
-  margin-bottom: 10px;
+  margin-bottom: 1rem;
+  color: #b0b0b0;
 }
 
 .audio-player {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 1rem;
 }
 
 .visualizer {
   width: 100%;
-  height: 100px;
+  height: 120px;
   background-color: #1a1a1a;
-  border-radius: 5px;
+  border-radius: 8px;
 }
 
 .controls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 1rem;
 }
 
 button {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 5px;
+  padding: 0.5rem;
   border-radius: 50%;
   transition: background-color 0.3s ease;
+  color: #ffffff;
+}
+
+button:hover {
+  background-color: #3a3a3a;
 }
 
 .seek-bar {
   flex-grow: 1;
   -webkit-appearance: none;
-  background: #d3d3d3;
+  background: #4a4a4a;
   outline: none;
   height: 5px;
   border-radius: 5px;
@@ -292,7 +315,7 @@ button {
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  background: #4a4a4a;
+  background: #ffffff;
   cursor: pointer;
 }
 
@@ -300,27 +323,37 @@ button {
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  background: #4a4a4a;
+  background: #ffffff;
   cursor: pointer;
 }
 
 .time {
-  font-size: 0.8rem;
-  color: #4a4a4a;
+  font-size: 0.9rem;
+  color: #b0b0b0;
 }
 
 .error-message {
-  color: #ff0000;
+  color: #ff6b6b;
   font-size: 0.9rem;
-  margin-top: 10px;
+  margin-top: 1rem;
+  background-color: rgba(255, 107, 107, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
 }
 
 .no-audio-message {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   height: 100%;
-  color: #4a4a4a;
+  color: #b0b0b0;
   font-style: italic;
 }
+
+.no-audio-message svg {
+  margin-bottom: 1rem;
+  color: #4a4a4a;
+}
+
 </style>

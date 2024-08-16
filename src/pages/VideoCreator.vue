@@ -9,6 +9,7 @@
       </div>
       <div class="controls">
         <AudioUploadPreview />
+        <VideoCreationControls />
       </div>
     </main>
   </div>
@@ -19,12 +20,18 @@ import { ref } from 'vue';
 import ImagePreviewGallery from '../components/ImageGallary.vue';
 import UploadArea from '../components/VideoCreationUploadPreview.vue';
 import AudioUploadPreview from '../components/AudioUploadPreview.vue';
+import VideoCreationControls from '../components/VideoCreationControls.vue';
 
 const images = ref([]);
 
 const handleImageSelect = (index) => {
   console.log('Selected image index:', index);
 };
+
+onMounted(() => {
+  sessionStorage.setItem('video-creation-audio', null);
+  sessionStorage.setItem('video-creation-images', null);
+});
 </script>
 
 <style scoped>
@@ -37,7 +44,9 @@ const handleImageSelect = (index) => {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  
   overflow-y: auto;
+  padding: 10px;
 }
 
 .video-panel {
@@ -77,7 +86,6 @@ main {
   width: 100%;
   height: 100%;
   border-radius: 10px;
-  overflow: hidden;
 }
 
 @media (max-width: 768px) {
