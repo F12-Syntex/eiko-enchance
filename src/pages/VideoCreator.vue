@@ -3,34 +3,144 @@
     <main>
       <div class="video-panel">
         <div class="image-preview">
+          <ImagePreviewGallery :images="images" @select="handleImageSelect" />
         </div>
-        <div class="upload-area" @dragover.prevent @drop.prevent="handleFileDrop" @click="triggerFileInput">
-          <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*, video/*"
-            style="display: none;" />
-          <div class="upload-prompt">
+        <div 
+          class="upload-area" 
+          :class="{ 'has-files': images.length > 0 }"
+          @dragover.prevent 
+          @drop.prevent="handleFileDrop" 
+          @click="triggerFileInput"
+        >
+          <input 
+            type="file" 
+            ref="fileInput" 
+            @change="handleFileUpload" 
+            accept="image/*" 
+            directory 
+            webkitdirectory
+            style="display: none;" 
+          />
+          <div v-if="images.length === 0" class="upload-prompt">
             <i class="fas fa-cloud-upload-alt"></i>
-            <p>Drag & Drop or Click to Upload </p>
-            <p class="file-types">Supported: JPG, PNG, GIF, MP4, WebM</p>
+            <p>Drag & Drop or Click to Upload Folder</p>
+            <p class="file-types">Supported: JPG, PNG, GIF</p>
+          </div>
+          <div v-else class="file-preview">
+            <p>{{ images.length }} image(s) uploaded</p>
+            <div class="thumbnail-container">
+              <img 
+                v-for="(image, index) in previewImages" 
+                :key="index" 
+                :src="image.url" 
+                :alt="image.alt" 
+                class="thumbnail"
+              />
+            </div>
           </div>
         </div>
       </div>
       <div class="controls">
         <div class="audio-display">
-
         </div>
       </div>
-      </main>
+    </main>
   </div>
 </template>
-
 <script setup>
-import { onMounted, onUnmounted } from 'vue';
-onMounted(() => {
-  console.log('Component mounted');
+import { ref, computed } from 'vue';
+import ImagePreviewGallery from '../components/ImageGallary.vue';
+
+const fileInput = ref(null);
+const images = ref([]);
+
+const previewImages = computed(() => {
+  return images.value.slice(0, 4); // Show up to 4 preview images
 });
+
+const triggerFileInput = () => {
+  fileInput.value.click();
+};
+
+const handleFileDrop = (event) => {
+  const items = event.dataTransfer.items;
+  if (items && items.length > 0) {
+    const item = items[0].webkitGetAsEntry();
+    if (item.isDirectory) {
+      processDirectory(item);
+    }
+  }
+};
+
+const handleFileUpload = (event) => {
+  const files = event.target.files;
+  processFiles(files);
+};
+
+const processDirectory = (directoryEntry) => {
+  const directoryReader = directoryEntry.createReader();
+  directoryReader.readEntries((entries) => {
+    const imageFiles = entries.filter(entry => entry.isFile && /\.(jpe?g|png|gif)$/i.test(entry.name));
+    processImageEntries(imageFiles);
+  });
+};
+
+const processFiles = (files) => {
+  const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+  processImageFiles(imageFiles);
+};
+
+const processImageEntries = (entries) => {
+  Promise.all(entries.map(entry => new Promise((resolve) => {
+    entry.file(file => {
+      resolve({ file, url: URL.createObjectURL(file), alt: file.name });
+    });
+  }))).then(imageData => {
+    images.value = imageData;
+  });
+};
+
+const processImageFiles = (files) => {
+  images.value = files.map(file => ({
+    file,
+    url: URL.createObjectURL(file),
+    alt: file.name
+  }));
+};
+
+const handleImageSelect = (index) => {
+  console.log('Selected image index:', index);
+  // Handle image selection logic here
+};
 </script>
 
 <style scoped>
+
+
+.upload-area.has-files {
+  border-style: solid;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.file-preview {
+  text-align: center;
+}
+
+.thumbnail-container {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.thumbnail {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 5px;
+}
+
 .app-container {
   font-family: 'Poppins', sans-serif;
   color: #e0e0e0;
@@ -42,7 +152,7 @@ onMounted(() => {
 
   display: flex;
   flex-direction: column;
-  
+
   box-sizing: border-box;
   overflow-y: auto;
 }
@@ -52,8 +162,10 @@ onMounted(() => {
   flex-direction: row;
   align-items: center;
   gap: 2rem;
-  
+
   width: 100%;
+  max-height: 60vh;
+  min-height: 600px;
 }
 
 .audio-display {
@@ -63,7 +175,7 @@ onMounted(() => {
   width: 100%;
   height: 125px;
   border-radius: 10px;
-  
+
   border: 1px solid #4a4a4a;
 }
 
@@ -82,10 +194,10 @@ onMounted(() => {
 
 .image-preview {
   height: 100%;
-  width: 40%;
+  width: 100%;
   max-width: 400px;
   min-width: 300px;
-  
+
   border-radius: 10px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border: 1px solid #4a4a4a;
@@ -123,8 +235,7 @@ main {
 
   width: 100%;
   max-width: 100%;
-  min-height: 400px;
-  height: 500px;
+  height: 100% ;
 
   border: 3px dashed #4a4a4a;
   border-radius: 20px;
