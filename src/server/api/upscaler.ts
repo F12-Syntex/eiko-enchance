@@ -24,16 +24,6 @@ async function upscale(event: H3Event, modelInfo: Model, scaleRatio: number, exp
 }
 
 async function createVideoFromPathAndAudio(data: any) {
-  // const data = {
-    // audio,
-    // imageParentFolder,
-    // settings: {
-    //   fps: fps.value,
-    //   codec: codec.value,
-    //   format: format.value
-    //   fileName: fileName.value
-    // }
-  // };
 
   const modelsPath = path.join(os.homedir(), 'Documents', 'eiko', 'models')
   const ffmpegPath = findExecutable(modelsPath, 'ffmpeg.exe')
@@ -41,7 +31,14 @@ async function createVideoFromPathAndAudio(data: any) {
   const outputFolder = path.dirname(data.imageParentFolder)
   const outputFile = path.join(outputFolder, `${data.settings.fileName}.${data.settings.format}` )
 
-  const command = `${ffmpegPath} -framerate ${data.settings.fps} -i ${data.imageParentFolder}\\%04d.png -i "${data.audio}" -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -stats -progress pipe:1 ${outputFile}`
+  const audio_data = JSON.parse(data.audio_crop)
+  const audioStart = audio_data.start
+  const audioEnd = audio_data.end
+
+  console.log('data', data)
+
+  //create the command to create the video with the audio cropped to the audio start and end
+  const command = `${ffmpegPath} -i "${data.imageParentFolder}\\%04d.png" -i "${data.audio}" -ss ${audioStart} -to ${audioEnd} -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -stats -progress pipe:1 ${outputFile}`
   
   console.log('command', command)
 

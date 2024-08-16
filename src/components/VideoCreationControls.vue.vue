@@ -57,6 +57,7 @@ const generateDefaultFileName = () => {
 const createVideo = async () => {
   const audio = sessionStorage.getItem('video-creation-audio');
   const images = JSON.parse(sessionStorage.getItem('video-creation-images'));
+  const audio_crop = sessionStorage.getItem('video-create-audio-crop');
 
   if (!audio) {
     alert('Please upload an audio file to create a video.');
@@ -74,6 +75,7 @@ const createVideo = async () => {
   const data = {
     audio,
     imageParentFolder,
+    audio_crop,
     settings: {
       fps: fps.value,
       codec: codec.value,

@@ -17,6 +17,16 @@
             <input type="range" min="0" :max="duration" v-model="currentTime" @input="seek" class="seek-bar" />
             <span class="time">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
           </div>
+          <div class="crop-controls">
+            <div class="crop-slider">
+              <input type="range" :min="0" :max="duration" v-model="cropStart" @input="updateCropTime" class="crop-range crop-start" />
+              <input type="range" :min="0" :max="duration" v-model="cropEnd" @input="updateCropTime" class="crop-range crop-end" />
+            </div>
+            <div class="crop-time">
+              <span>Start: {{ formatTime(cropStart) }}</span>
+              <span>End: {{ formatTime(cropEnd) }}</span>
+            </div>
+          </div>
         </div>
         <div v-else class="no-audio-message">
           <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
@@ -54,7 +64,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 
 const audioUrl = ref('');
 const isPlaying = ref(false);
@@ -63,6 +73,8 @@ const currentTime = ref(0);
 const visualizer = ref(null);
 const errorMessage = ref('');
 const isDragging = ref(false);
+const cropStart = ref(0);
+const cropEnd = ref(0);
 let audioContext, analyser, source, animationId;
 const audio = new Audio();
 
@@ -81,7 +93,6 @@ const processAudioFile = (file) => {
   if (file) {
     const fileType = file.type;
     if (fileType.startsWith('audio/')) {
-
       if (audioUrl.value) {
         URL.revokeObjectURL(audioUrl.value);
       }
@@ -89,8 +100,10 @@ const processAudioFile = (file) => {
       audio.src = audioUrl.value;
       audio.onloadedmetadata = () => {
         duration.value = audio.duration;
-        //save the audio file to the session
+        cropStart.value = 0;
+        cropEnd.value = audio.duration;
         sessionStorage.setItem('video-creation-audio', file.path);
+        updateCropTime();
       };
       audio.onerror = (e) => {
         errorMessage.value = `Error loading audio: ${e.target.error.message}`;
@@ -177,6 +190,15 @@ const startVisualization = () => {
 
   draw();
 };
+
+const updateCropTime = () => {
+  sessionStorage.setItem('video-create-audio-crop', JSON.stringify({
+    start: parseFloat(cropStart.value),
+    end: parseFloat(cropEnd.value)
+  }));
+};
+
+watch([cropStart, cropEnd], updateCropTime);
 
 onMounted(() => {
   audio.addEventListener('timeupdate', () => {
@@ -299,8 +321,7 @@ button:hover {
   background-color: #3a3a3a;
 }
 
-.seek-bar {
-  flex-grow: 1;
+.seek-bar, .crop-range {
   -webkit-appearance: none;
   background: #4a4a4a;
   outline: none;
@@ -308,7 +329,11 @@ button:hover {
   border-radius: 5px;
 }
 
-.seek-bar::-webkit-slider-thumb {
+.seek-bar {
+  flex-grow: 1;
+}
+
+.seek-bar::-webkit-slider-thumb, .crop-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 15px;
@@ -318,7 +343,7 @@ button:hover {
   cursor: pointer;
 }
 
-.seek-bar::-moz-range-thumb {
+.seek-bar::-moz-range-thumb, .crop-range::-moz-range-thumb {
   width: 15px;
   height: 15px;
   border-radius: 50%;
@@ -327,6 +352,45 @@ button:hover {
 }
 
 .time {
+  font-size: 0.9rem;
+  color: #b0b0b0;
+}
+
+.crop-controls {
+  margin-top: 1rem;
+}
+
+.crop-slider {
+  position: relative;
+  height: 30px;
+}
+
+.crop-range {
+  position: absolute;
+  width: 100%;
+  pointer-events: none;
+}
+
+.crop-start {
+  top: 0;
+}
+
+.crop-end {
+  bottom: 0;
+}
+
+.crop-range::-webkit-slider-thumb {
+  pointer-events: auto;
+}
+
+.crop-range::-moz-range-thumb {
+  pointer-events: auto;
+}
+
+.crop-time {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
   font-size: 0.9rem;
   color: #b0b0b0;
 }

@@ -8490,6 +8490,11 @@ vue-router@^4.4.0:
     "@vue/server-renderer" "3.4.35"
     "@vue/shared" "3.4.35"
 
+vue3-slider@^1.9.0:
+  version "1.9.0"
+  resolved "https://registry.npmjs.org/vue3-slider/-/vue3-slider-1.9.0.tgz"
+  integrity sha512-S+ojp3A21FiOM389Xp/bdUKSzjxcsTaDwI4N1aWVPoNh9//E8M+dqs1Ufjh86LulPAWLCN0ZR6eaD8jLZZ574g==
+
 wait-on@^7.0.1:
   version "7.2.0"
   resolved "https://registry.npmjs.org/wait-on/-/wait-on-7.2.0.tgz"
