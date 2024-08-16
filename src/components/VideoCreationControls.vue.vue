@@ -7,50 +7,12 @@
         <input type="number" id="fps" v-model="fps" min="1" max="60" step="1">
       </div>
       <div class="config-item">
-        <label for="resolution">Resolution:</label>
-        <select id="resolution" v-model="resolution">
-          <option value="1920x1080">1920x1080 (1080p)</option>
-          <option value="1280x720">1280x720 (720p)</option>
-          <option value="854x480">854x480 (480p)</option>
-        </select>
-      </div>
-      <div class="config-item">
-        <label for="bitrate">Bitrate (kbps):</label>
-        <input type="number" id="bitrate" v-model="bitrate" min="100" max="10000" step="100">
-      </div>
-      <div class="config-item">
         <label for="codec">Video Codec:</label>
         <select id="codec" v-model="codec">
           <option value="libx264">H.264</option>
           <option value="libx265">H.265 (HEVC)</option>
           <option value="vp9">VP9</option>
         </select>
-      </div>
-      <div class="config-item">
-        <label for="preset">Encoding Preset:</label>
-        <select id="preset" v-model="preset">
-          <option value="ultrafast">Ultrafast</option>
-          <option value="superfast">Superfast</option>
-          <option value="veryfast">Veryfast</option>
-          <option value="faster">Faster</option>
-          <option value="fast">Fast</option>
-          <option value="medium">Medium</option>
-          <option value="slow">Slow</option>
-          <option value="slower">Slower</option>
-          <option value="veryslow">Veryslow</option>
-        </select>
-      </div>
-      <div class="config-item">
-        <label for="audioCodec">Audio Codec:</label>
-        <select id="audioCodec" v-model="audioCodec">
-          <option value="aac">AAC</option>
-          <option value="mp3">MP3</option>
-          <option value="opus">Opus</option>
-        </select>
-      </div>
-      <div class="config-item">
-        <label for="audioBitrate">Audio Bitrate (kbps):</label>
-        <input type="number" id="audioBitrate" v-model="audioBitrate" min="32" max="320" step="16">
       </div>
       <div class="config-item">
         <label for="format">Output Format:</label>
@@ -60,34 +22,47 @@
           <option value="mov">MOV</option>
         </select>
       </div>
+      <div class="config-item">
+        <label for="fileName">File Name:</label>
+        <input type="text" id="fileName" v-model="fileName" placeholder="Enter file name">
+      </div>
     </div>
-    <button @click="createVideo" class="create-video-btn">Create Video</button>
+    <button @click="createVideo" class="create-video-btn" :disabled="isLoading">Create Video</button>
+    
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <p>Processing video... Please wait.</p>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 
 const fps = ref(30);
-const resolution = ref('1920x1080');
-const bitrate = ref(5000);
 const codec = ref('libx264');
-const preset = ref('medium');
-const audioCodec = ref('aac');
-const audioBitrate = ref(128);
 const format = ref('mp4');
+const fileName = ref('');
+const isLoading = ref(false);
+
+onMounted(() => {
+  generateDefaultFileName();
+});
+
+const generateDefaultFileName = () => {
+  const randomNumbers = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  fileName.value = `video${randomNumbers}`;
+};
 
 const createVideo = async () => {
   const audio = sessionStorage.getItem('video-creation-audio');
   const images = JSON.parse(sessionStorage.getItem('video-creation-images'));
 
-  //if audio is not present, show an error message
   if (!audio) {
     alert('Please upload an audio file to create a video.');
     return;
   }
 
-  //if images are not present, show an error message
   if (!images || images.length === 0) {
     alert('Please upload images to create a video.');
     return;
@@ -101,15 +76,13 @@ const createVideo = async () => {
     imageParentFolder,
     settings: {
       fps: fps.value,
-      resolution: resolution.value,
-      bitrate: bitrate.value,
       codec: codec.value,
-      preset: preset.value,
-      audioCodec: audioCodec.value,
-      audioBitrate: audioBitrate.value,
-      format: format.value
+      format: format.value,
+      fileName: fileName.value || generateDefaultFileName()
     }
   };
+
+  isLoading.value = true;
 
   try {
     const response = await fetch('/api/upscaler', {
@@ -123,19 +96,22 @@ const createVideo = async () => {
 
     const result = await response.json();
 
-    console.log('Upscaling result:', result);
+    console.log('Video creation result:', result);
 
     if (result.error) {
-      console.error('Upscaling failed:', result.error);
+      console.error('Video creation failed:', result.error);
+      alert('Video creation failed. Please try again.');
     } else {
-      console.log('Upscaling completed:', result.filePath);
+      console.log('Video creation completed:', result.filePath);
     }
   } catch (error) {
     console.error('Error calling upscaler API:', error);
+    alert('An error occurred while creating the video. Please try again.');
+  } finally {
+    isLoading.value = false;
   }
-
-
 };
+
 </script>
 
 <style scoped>
@@ -145,7 +121,7 @@ const createVideo = async () => {
   padding: 1.5rem;
   width: 100%;
   height: 100%;
-  min-height: 500px;
+  position: relative;
 }
 
 h2 {
@@ -192,5 +168,43 @@ select {
 
 .create-video-btn:hover {
   background-color: #45a049;
+}
+
+.create-video-btn:disabled {
+  background-color: #808080;
+  cursor: not-allowed;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+}
+
+.loading-spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #4CAF50;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-overlay p {
+  color: #e0e0e0;
+  margin-top: 1rem;
 }
 </style>

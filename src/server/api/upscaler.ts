@@ -25,31 +25,25 @@ async function upscale(event: H3Event, modelInfo: Model, scaleRatio: number, exp
 
 async function createVideoFromPathAndAudio(data: any) {
   // const data = {
-  //   audio,
-  //   imageParentFolder,
-  //   settings: {
-  //     fps: fps.value,
-  //     resolution: resolution.value,
-  //     bitrate: bitrate.value,
-  //     codec: codec.value,
-  //     preset: preset.value,
-  //     audioCodec: audioCodec.value,
-  //     audioBitrate: audioBitrate.value,
-  //     format: format.value
-  //   }
+    // audio,
+    // imageParentFolder,
+    // settings: {
+    //   fps: fps.value,
+    //   codec: codec.value,
+    //   format: format.value
+    //   fileName: fileName.value
+    // }
   // };
 
   const modelsPath = path.join(os.homedir(), 'Documents', 'eiko', 'models')
   const ffmpegPath = findExecutable(modelsPath, 'ffmpeg.exe')
 
   const outputFolder = path.dirname(data.imageParentFolder)
-  const outputFile = path.join(outputFolder, 'output.mp4')
+  const outputFile = path.join(outputFolder, `${data.settings.fileName}.${data.settings.format}` )
 
-  const command = `${ffmpegPath} -framerate ${data.settings.fps} -i ${data.imageParentFolder}\\%04d.png -i "${data.audio}" -c:v ${data.settings.codec} -profile:v high -crf ${data.settings.bitrate} -vf scale=${data.settings.resolution} -pix_fmt yuv420p -c:a ${data.settings.audioCodec} -b:a ${data.settings.audioBitrate} -shortest -stats -progress pipe:1 ${outputFile}`
-
-  console.log('outputFile', outputFile)
+  const command = `${ffmpegPath} -framerate ${data.settings.fps} -i ${data.imageParentFolder}\\%04d.png -i "${data.audio}" -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -stats -progress pipe:1 ${outputFile}`
+  
   console.log('command', command)
-  console.log('data', data)
 
   return executeCommand(command, outputFile, true)
 }

@@ -53,7 +53,6 @@
   </div>
 </template>
 
-
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 
@@ -82,6 +81,7 @@ const processAudioFile = (file) => {
   if (file) {
     const fileType = file.type;
     if (fileType.startsWith('audio/')) {
+
       if (audioUrl.value) {
         URL.revokeObjectURL(audioUrl.value);
       }
@@ -195,7 +195,6 @@ onUnmounted(() => {
   }
 });
 </script>
-
 
 <style scoped>
 .audio-display {
@@ -355,5 +354,4 @@ button:hover {
   margin-bottom: 1rem;
   color: #4a4a4a;
 }
-
 </style>

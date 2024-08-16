@@ -2,9 +2,9 @@
   <div class="app-container">
     <main>
       <div class="video-panel">
-        <div class="image-preview">
+        <!-- <div class="image-preview">
           <ImagePreviewGallery :images="images" @select="handleImageSelect" />
-        </div>
+        </div> -->
         <UploadArea v-model:images="images" />
       </div>
       <div class="controls">
