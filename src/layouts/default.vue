@@ -1,16 +1,25 @@
 <template>
-  <div :class="['eiko-layout', isDarkMode ? 'dark-mode' : 'light-mode']">
+  <div class="eiko-layout" @keydown="handleKeyDown" tabindex="0">
     <SideBar />
     <main>
       <slot />
+      <Terminal v-if="isTerminalOpen" @close="isTerminalOpen = false" />
     </main>
   </div>
 </template>
 
 <script setup>
-import { useTheme } from '@/composables/useTheme';
+import { ref } from 'vue';
+import Terminal from '@/components/Terminal.vue';
 
-const { isDarkMode } = useTheme();
+const isTerminalOpen = ref(false);
+
+const handleKeyDown = (event) => {
+  if (event.key === 'Tab') {
+    event.preventDefault(); // Prevent default tab behavior
+    isTerminalOpen.value = !isTerminalOpen.value;
+  }
+};
 </script>
 
 <style scoped>
@@ -19,16 +28,9 @@ const { isDarkMode } = useTheme();
   flex-direction: row;
   min-height: 100vh;
   overflow: hidden;
-}
-
-.dark-mode {
   background: #0d0d0d;
   color: #fff;
-}
-
-.light-mode {
-  background: #f5f5f5;
-  color: #000;
+  outline: none;
 }
 
 main {
@@ -38,5 +40,6 @@ main {
   align-items: center;
   padding: 20px;
   box-sizing: border-box;
+  position: relative;
 }
 </style>
