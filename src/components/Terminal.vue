@@ -54,7 +54,7 @@ function clearTerminal() {
 
 function openMagikEditor() {
   appendOutput('Opening the Magik Editor...\n', 'green');
-  router.push('/ai-models');
+  router.push('/MagikEditor');
 }
 
 function appendOutput(text, color = 'white') {
