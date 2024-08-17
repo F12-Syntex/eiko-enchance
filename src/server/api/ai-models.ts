@@ -21,7 +21,7 @@ const modelsCache: Model[] = [
     ''
   ),
   new Model(
-    'ffmpeg', 
+    'ffmpeg',
     'ffmpeg is a free and open-source project consisting of a large software suite of libraries and programs for handling video, audio, and other multimedia files and streams.',
     'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip',
     270043116,
@@ -31,13 +31,84 @@ const modelsCache: Model[] = [
     path.join('ffmpeg', 'ffmpeg-7.0.2-essentials_build', 'bin', 'ffmpeg.exe'),
     ''
   ),
+  new Model(
+    'audiowaveform',
+    'audiowaveform is a C++ command-line application that generates waveform data from either MP3, WAV, or FLAC format audio files.',
+    'https://github.com/bbc/audiowaveform/releases/download/1.10.1/audiowaveform-1.10.1.win64.zip',
+    1468063,
+    false,
+    true,
+    false,
+    'audiowaveform-1.10.1.win64/audiowaveform.exe',
+    ''
+  ),
 
-  new Model('realesr-animevideov3-x2.bin', 'A RealSR model trained on anime images for 2x upscaling.', '', 0, false, false, true, REALESRGAN_SCRIPT, 'realesrgan-ncnn/models/realesr-animevideov3-x2.bin'),
-  new Model('realesr-animevideov3-x3.bin', 'A RealSR model trained on anime images for 3x upscaling.', '', 0, false, false, true, REALESRGAN_SCRIPT, 'realesrgan-ncnn/models/realesr-animevideov3-x3.bin'),
-  new Model('realesr-animevideov3-x4.bin', 'A RealSR model trained on anime images for 4x upscaling.', '', 0, false, false, true, REALESRGAN_SCRIPT, 'realesrgan-ncnn/models/realesr-animevideov3-x4.bin'),
-  new Model('realesrgan-x4plus-anime.bin', 'A RealESRGAN model trained on anime images for 4x upscaling.', '', 0, false, false, true, REALESRGAN_SCRIPT, 'realesrgan-ncnn/models/realesrgan-x4plus-anime.bin'),
-  new Model('realesrgan-x4plus.bin', 'A RealESRGAN model trained on mixed images for 4x upscaling.', '', 0, false, false, true, REALESRGAN_SCRIPT, 'realesrgan-ncnn/models/realesrgan-x4plus.bin'),
-  new Model('realesrgan-anime-video.bin', 'A RealESRGAN model trained on anime images for video upscaling.', '', 0, false, false, true, REALESRGAN_SCRIPT, 'realesrgan-ncnn/models/realesrgan-anime-video.bin'),
+  new Model(
+    'realesr-animevideov3-x2.bin',
+    'A RealSR model trained on anime images for 2x upscaling.',
+    '',
+    0,
+    false,
+    false,
+    true,
+    REALESRGAN_SCRIPT,
+    'realesrgan-ncnn/models/realesr-animevideov3-x2.bin'
+  ),
+  new Model(
+    'realesr-animevideov3-x3.bin',
+    'A RealSR model trained on anime images for 3x upscaling.',
+    '',
+    0,
+    false,
+    false,
+    true,
+    REALESRGAN_SCRIPT,
+    'realesrgan-ncnn/models/realesr-animevideov3-x3.bin'
+  ),
+  new Model(
+    'realesr-animevideov3-x4.bin',
+    'A RealSR model trained on anime images for 4x upscaling.',
+    '',
+    0,
+    false,
+    false,
+    true,
+    REALESRGAN_SCRIPT,
+    'realesrgan-ncnn/models/realesr-animevideov3-x4.bin'
+  ),
+  new Model(
+    'realesrgan-x4plus-anime.bin',
+    'A RealESRGAN model trained on anime images for 4x upscaling.',
+    '',
+    0,
+    false,
+    false,
+    true,
+    REALESRGAN_SCRIPT,
+    'realesrgan-ncnn/models/realesrgan-x4plus-anime.bin'
+  ),
+  new Model(
+    'realesrgan-x4plus.bin',
+    'A RealESRGAN model trained on mixed images for 4x upscaling.',
+    '',
+    0,
+    false,
+    false,
+    true,
+    REALESRGAN_SCRIPT,
+    'realesrgan-ncnn/models/realesrgan-x4plus.bin'
+  ),
+  new Model(
+    'realesrgan-anime-video.bin',
+    'A RealESRGAN model trained on anime images for video upscaling.',
+    '',
+    0,
+    false,
+    false,
+    true,
+    REALESRGAN_SCRIPT,
+    'realesrgan-ncnn/models/realesrgan-anime-video.bin'
+  )
 ]
 
 export default defineEventHandler(async (event) => {
@@ -61,7 +132,7 @@ export default defineEventHandler(async (event) => {
     deleteModel: async () => {
       const body = await readBody(event)
       return deleteModel(body.model)
-    },
+    }
   }
 
   if (methodName && methodName in methodMap) {
@@ -81,7 +152,6 @@ async function getInstalledModels(modelsPath: string) {
     for (const dirent of modelFolders) {
       if (dirent.isDirectory()) {
         const file = dirent.name
-
 
         if (file === 'realesrgan-ncnn') {
           //push all the installed models in the real esrgan folder which would be located in the models folder inside of real esrgan
@@ -112,12 +182,12 @@ async function getInstalledModels(modelsPath: string) {
       if (installedModels.includes(model.name)) {
         model.setInstalled(true)
         // console.log(`Model ${model.name} is installed.`)
-      }else{
+      } else {
         model.setInstalled(false)
         // console.log(`Model ${model.name} is not installed.`)
       }
       models.push(model)
-    });
+    })
 
     // console.log("Models: " + models)
 
@@ -141,7 +211,7 @@ export async function installModel(model: Model, modelsPath: string) {
       onDownloadProgress: (progressEvent) => {
         const percentCompleted = Math.round((progressEvent.loaded * 100) / downloadSize)
         console.log(`Download progress: ${percentCompleted}%`)
-      },
+      }
     })
 
     const zipFilePath = path.join(modelsPath, `${model.name}.zip`)
@@ -162,18 +232,15 @@ export async function installModel(model: Model, modelsPath: string) {
   }
 }
 
-
 export async function deleteModel(model: Model) {
   const modelPath = path.join(process.env.HOME || process.env.USERPROFILE || '', 'Documents', 'eiko', 'models', model.name)
   try {
-    await fs.rmdir(modelPath,
-      {
-        recursive: true
-      })
+    await fs.rmdir(modelPath, {
+      recursive: true
+    })
     console.log(`Model ${model.name} deleted successfully.`)
   } catch (error) {
     console.error(`Error deleting model ${model.name}:`, error)
     throw error
   }
 }
-

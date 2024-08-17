@@ -17,6 +17,9 @@
 </template>
 
 <script>
+
+import settings from '../managers/SettingsManager'
+
 export default {
   data() {
     return {
@@ -27,9 +30,11 @@ export default {
   methods: {
     async generate() {
       const videoPaths = this.videos.map((video) => video.file.path)
+      const cacheDirectory = settings.getSettings().cacheDirectory
 
       try {
         const request = {
+          cacheDirectory,
           videoPaths
         }
 

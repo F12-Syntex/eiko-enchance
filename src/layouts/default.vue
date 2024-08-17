@@ -17,7 +17,9 @@ const isTerminalOpen = ref(false);
 const handleKeyDown = (event) => {
   if (event.key === 'Tab') {
     event.preventDefault(); // Prevent default tab behavior
-    isTerminalOpen.value = !isTerminalOpen.value;
+    // isTerminalOpen.value = !isTerminalOpen.value;
+    //nagivate to the magik editor page
+    window.location.href = "/MagikEditor";
   }
 };
 </script>

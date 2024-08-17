@@ -1,8 +1,11 @@
 import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
-import { exec } from 'child_process'
+import settings from '../../managers/SettingsManager'
+import { exec, execSync } from 'child_process'
 import { promisify } from 'util'
+
+let cachePath = ''
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
@@ -13,13 +16,13 @@ export default defineEventHandler(async (event) => {
 let fps = 30
 
 async function magikvideo(data: any) {
+  cachePath = data.cacheDirectory
   const videoPath = data.videoPaths
 
   if (!videoPath) {
     throw new Error('videoPath is required')
   }
 
-  const cachePath = path.join(os.homedir(), 'Documents', 'eiko', 'cache')
   const folderpath = path.join(cachePath, Math.random().toString(36).substring(7))
 
   // Create the folder
@@ -35,7 +38,11 @@ async function magikvideo(data: any) {
     videoPath.map(async (video: string) => {
       console.log('Processing video:', video)
 
-      fps = await getFrameRate(ffmpegPath, video);
+      if (!ffmpegPath) {
+        throw new Error('FFmpeg not found in models directory')
+      }
+
+      fps = await getFrameRate(ffmpegPath, video)
 
       const audio = await processVideo(prefix, video, folderpath)
       console.clear()
@@ -50,7 +57,7 @@ async function magikvideo(data: any) {
   const outputVideoPath = path.join(cachePath, randomVideoName + '.mp4')
 
   // Now we construct the video using the audio + folder + framerate of 30
-  const command = `${ffmpegPath} -framerate ${fps} -i "${folderpath}\\%04d.png" -i "${audios[0]}" -c:v libx264 -c:a aac -strict experimental -pix_fmt yuv420p -shortest "${outputVideoPath}"`
+  const command = `${ffmpegPath} -framerate ${fps} -i "${folderpath}\\%04d.png" -i "${audios[0]}" -c:v libx264 -c:a mp3 -strict experimental -pix_fmt yuv420p -shortest "${outputVideoPath}"`
   console.log('Creating video:', command)
 
   // Uncomment these lines when you're ready to execute the command
@@ -63,8 +70,6 @@ async function magikvideo(data: any) {
 async function processVideo(prefix: number, videoPath: string, folderpath: string): Promise<string> {
   const modelsPath = path.join(os.homedir(), 'Documents', 'eiko', 'models')
   const ffmpegPath = findExecutable(modelsPath, 'ffmpeg.exe')
-
-  const cachePath = path.join(os.homedir(), 'Documents', 'eiko', 'cache')
 
   //make the folder if it doesn't exist
   if (!fs.existsSync(cachePath)) {
@@ -84,7 +89,86 @@ async function processVideo(prefix: number, videoPath: string, folderpath: strin
 
   return updatedAudioPath
 }
-async function getMusicBeatTimeInSecondsArray(audioPath: string) {
+
+async function getMusicBeatTimeInSecondsArray(audioPath: string){
+  console.log('Attempting to read audio file:', audioPath)
+
+  if (!fs.existsSync(audioPath)) {
+    throw new Error('Audio file does not exist: ' + audioPath)
+  }
+
+  try {
+    fs.accessSync(audioPath, fs.constants.R_OK)
+  } catch (err) {
+    throw new Error('No read access to audio file: ' + audioPath)
+  }
+
+  try {
+    const randomName = Math.random().toString(36).substring(7)
+
+    const modelsPath = path.join(os.homedir(), 'Documents', 'eiko', 'models')
+    const audiowaveformPath = findExecutable(modelsPath, 'audiowaveform.exe')
+    const waveformJsonPath = path.join(cachePath, randomName + '.json')
+
+    // Run audiowaveform to generate waveform data
+    const command = `"${audiowaveformPath}" -i "${audioPath}" -o "${waveformJsonPath}" --pixels-per-second 10 --output-format json`
+    execSync(command)
+
+    // Read the waveform data
+    const waveformData = JSON.parse(fs.readFileSync(waveformJsonPath, 'utf8'))
+
+    const beats: number[] = []
+
+    // Smoothing the waveform data to reduce noise
+    const smoothedData = smoothWaveformData(waveformData.data, 5) // Adjust the smoothing window as needed
+
+    // Calculate an adaptive threshold based on the average amplitude
+    const threshold = calculateAdaptiveThreshold(smoothedData)
+
+    // Detect beats/spikes in the smoothed waveform data
+    for (let i = 1; i < smoothedData.length - 1; i++) {
+      const prev = smoothedData[i - 1]
+      const curr = smoothedData[i]
+      const next = smoothedData[i + 1]
+
+      // Detect a peak that is greater than both its neighbors and above the threshold
+      if (curr > prev && curr > next && curr > threshold) {
+        const timeInSeconds = i / 10 // Since we used 10 pixels per second
+        beats.push(timeInSeconds)
+      }
+    }
+
+    console.log('Number of beats detected:', beats.length)
+
+    // Optionally, filter the beats further using a threshold
+    const beatRanges = createBeatRanges(beats, 0.5) // Adjust threshold as needed
+    return beatRanges
+  } catch (err) {
+    console.error('Error processing audio file:', err)
+    throw err
+  }
+}
+
+// Function to smooth the waveform data using a simple moving average
+function smoothWaveformData(data: number[], windowSize: number): number[] {
+  const smoothed = []
+  for (let i = 0; i < data.length; i++) {
+    const start = Math.max(0, i - windowSize)
+    const end = Math.min(data.length, i + windowSize + 1)
+    const window = data.slice(start, end)
+    const average = window.reduce((sum, value) => sum + value, 0) / window.length
+    smoothed.push(average)
+  }
+  return smoothed
+}
+
+// Function to calculate an adaptive threshold based on the average amplitude
+function calculateAdaptiveThreshold(data: number[]): number {
+  const averageAmplitude = data.reduce((sum, value) => sum + value, 0) / data.length
+  return averageAmplitude * 1.5 // Adjust multiplier as needed
+}
+
+async function getMusicBeatTimeInSecondsArray1(audioPath: string) {
   console.log('Attempting to read audio file:', audioPath)
 
   if (!fs.existsSync(audioPath)) {
@@ -201,8 +285,6 @@ async function extractFramesFromVideo(prefix: number, videoPath: string, keyAudi
 
   const extractedFrames: string[] = []
 
-  const cachePath = path.join(os.homedir(), 'Documents', 'eiko', 'cache')
-
   //create a new audio file cropped to the key sounds
   const audioPath = await cropAudio(audioFile, keyAudioFrames, cachePath, fps)
 
@@ -245,7 +327,7 @@ async function cropAudio(audioPath: string, keySounds: number[][], cachePath: st
   }
 
   const randomName = Math.random().toString(36).substring(7)
-  const outputPath = path.join(cachePath, `${randomName}_cropped.aac`)
+  const outputPath = path.join(cachePath, `${randomName}_cropped.mp3`)
 
   // Create filter complex string for all key sound ranges
   let filterComplex = keySounds
@@ -274,8 +356,8 @@ async function cropAudio(audioPath: string, keySounds: number[][], cachePath: st
 
 async function extractAudio(ffmpegPath: string, videoPath: string, cachePath: string): Promise<string> {
   const randomName = Math.random().toString(36).substring(7)
-  const audioPath = path.join(cachePath, randomName + '.aac')
-  const command = `"${ffmpegPath}" -i "${videoPath}" -vn -acodec copy "${audioPath}"`
+  const audioPath = path.join(cachePath, randomName + '.mp3')
+  const command = `"${ffmpegPath}" -i "${videoPath}" -vn -acodec libmp3lame "${audioPath}"`
 
   try {
     // Wait for the command to complete
